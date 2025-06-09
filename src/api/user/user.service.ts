@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In, Not } from 'typeorm';
 
@@ -29,7 +33,7 @@ export class UserService {
     private globalService: GlobalService,
     private bcryptService: BcryptService,
     private modelService: ModelService,
-  ) { }
+  ) {}
 
   /**
    * service: get all users service
@@ -144,6 +148,7 @@ export class UserService {
   /**
    * service: update user by id
    */
+  // TODO: Check the full function correction needed...
   async update(
     updateUserBodyReq: UserBodyUpdateReqDto<Role>,
     userId: string,
@@ -227,8 +232,10 @@ export class UserService {
         throw new BadRequestException('User are not exists');
       }
 
-      if(!userData?.deletedAt) {
-        throw new BadRequestException("This action work for soft deleted record.");
+      if (!userData?.deletedAt) {
+        throw new BadRequestException(
+          'This action work for soft deleted record.',
+        );
       }
       const deleteUser: TypeOrmDeleteResult =
         await this.userRepository.delete(userId);

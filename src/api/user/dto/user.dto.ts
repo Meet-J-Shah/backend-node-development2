@@ -7,6 +7,7 @@ import {
   IsArray,
   IsBoolean,
   IsOptional,
+  ArrayMinSize,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -37,6 +38,7 @@ export class UserBodyReqDto<T> {
 
   @IsNotEmpty()
   @IsArray()
+  @ArrayMinSize(1)
   @ApiProperty()
   roles: T[];
 }

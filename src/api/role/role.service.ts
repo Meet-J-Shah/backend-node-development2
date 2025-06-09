@@ -33,7 +33,7 @@ export class RoleService {
     private globalService: GlobalService,
     private modelService: ModelService,
     private readonly customLogger: CustomLogger,
-  ) { }
+  ) {}
 
   /**
    * ROLE SERVICE: find many roles

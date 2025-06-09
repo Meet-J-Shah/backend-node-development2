@@ -14,7 +14,7 @@ export default () => ({
     username: process.env.DB_USERNAME || 'root',
     password: process.env.DB_PASSWORD || 'root',
     database: process.env.DB_NAME || 'boilerplate',
-    seeds: ["src/db/seeders/**/*.seeder.ts"],
+    seeds: ['src/db/seeders/**/*.seeder.ts'],
     log: JSON.parse(JSON.stringify(process.env.DB_LOG)) || true,
   },
   jwt: {
@@ -26,5 +26,5 @@ export default () => ({
       secretKey: process.env.JWT_REFRESH_TOKEN_SECRET_KEY,
       expired: process.env.JWT_REFRESH_TOKEN_EXPIRED,
     },
-  }
+  },
 });

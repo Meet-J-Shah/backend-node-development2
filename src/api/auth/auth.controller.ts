@@ -9,7 +9,8 @@ import { LoginReqDto, LoginResDto } from './dto/auth.dto';
 export class AuthController {
   constructor(
     private globalService: GlobalService,
-    private authService: AuthService) { }
+    private authService: AuthService,
+  ) {}
 
   /**
    * Admin login api

@@ -21,7 +21,10 @@ import { UserService } from './user.service';
 import { Role } from '../role/entities/role.entity';
 import { User } from './entities/user.entity';
 import { userPermissionConstant } from './constants/permission.constant';
-import { ControllerResDto, ServiceResDto } from '../../utils/global/dto/global.dto';
+import {
+  ControllerResDto,
+  ServiceResDto,
+} from '../../utils/global/dto/global.dto';
 import {
   UserBodyReqDto,
   UserParamReqDto,
@@ -117,7 +120,7 @@ export class UserController {
   @PermissionDecorator(userPermissionConstant.ADMIN_USER_HARD_DELETE)
   async hardDelete(
     @Param() userParamReq: UserParamReqDto,
-  ): Promise<ControllerResDto<{ isDeleted: boolean; }>> {
+  ): Promise<ControllerResDto<{ isDeleted: boolean }>> {
     const { userId } = userParamReq;
     const isDeleted: boolean = await this.userService.delete(userId);
     return this.globalService.setControllerResponse(
@@ -135,7 +138,7 @@ export class UserController {
   async softDelete(
     @AdminAuthDecorator() adminAuth: any,
     @Param() userParamReq: UserParamReqDto,
-  ): Promise<ControllerResDto<{ isDeleted: boolean; }>> {
+  ): Promise<ControllerResDto<{ isDeleted: boolean }>> {
     const { userId } = userParamReq;
     const updateUserBodyReq: DeleteUserBodyReqDto = {
       hasSoftDeleted: true,

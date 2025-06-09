@@ -19,7 +19,10 @@ import { GlobalService } from '../../utils/global/global.service';
 import { RoleService } from './role.service';
 import { Role } from './entities/role.entity';
 import { rolePermissionsConstant } from './constants/permission.constant';
-import { ControllerResDto, ServiceResDto } from '../../utils/global/dto/global.dto';
+import {
+  ControllerResDto,
+  ServiceResDto,
+} from '../../utils/global/dto/global.dto';
 import {
   FindManyRoleQueryReq,
   FindOneRoleParamReqDto,
@@ -35,7 +38,7 @@ export class RoleController {
   constructor(
     private globalService: GlobalService,
     private roleService: RoleService,
-  ) { }
+  ) {}
 
   /**
    * ROLE API: find many roles
@@ -120,7 +123,7 @@ export class RoleController {
   async softDelete(
     @AdminAuthDecorator() adminAuth: any,
     @Param() deleteRoleParamReq: FindOneRoleParamReqDto,
-  ): Promise<ControllerResDto<{ isDeleted: boolean; }>> {
+  ): Promise<ControllerResDto<{ isDeleted: boolean }>> {
     const { roleId } = deleteRoleParamReq;
     const updateRoleBodyReq: DeleteRoleBodyReqDto = {
       hasSoftDeleted: true,
@@ -170,7 +173,7 @@ export class RoleController {
   @PermissionDecorator(rolePermissionsConstant.ADMIN_ROLE_HARD_DELETE)
   async hardDelete(
     @Param() deleteRoleParamReq: FindOneRoleParamReqDto,
-  ): Promise<ControllerResDto<{ isDeleted: boolean; }>> {
+  ): Promise<ControllerResDto<{ isDeleted: boolean }>> {
     const { roleId } = deleteRoleParamReq;
     const isDeleted: boolean = await this.roleService.delete(roleId);
     return this.globalService.setControllerResponse(

@@ -13,7 +13,10 @@ import { GlobalService } from '../../utils/global/global.service';
 import { PermissionService } from './permission.service';
 import { Permission } from './entities/permission.entity';
 import { permissionPermissionConstant } from './constants/permission.constant';
-import { ControllerResDto, ServiceResDto } from '../../utils/global/dto/global.dto';
+import {
+  ControllerResDto,
+  ServiceResDto,
+} from '../../utils/global/dto/global.dto';
 import { FindManyPermissionQueryReq } from './dto/permission.dto';
 
 @Controller({ path: 'admin/permissions', version: '1' })
@@ -22,7 +25,7 @@ export class AdminPermissionController {
   constructor(
     private globalService: GlobalService,
     private permissionService: PermissionService,
-  ) { }
+  ) {}
 
   /**
    * PERMISSION API: find many permissions
