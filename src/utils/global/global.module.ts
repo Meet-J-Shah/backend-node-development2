@@ -7,4 +7,4 @@ import { CustomLogger } from '../logger/logger.service';
   providers: [GlobalService, CustomLogger],
   exports: [GlobalService],
 })
-export class GlobalModule { }
+export class GlobalModule {}

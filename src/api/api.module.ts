@@ -5,7 +5,6 @@ import { PermissionModule } from './permission/permission.module';
 import { UserModule } from './user/user.module';
 
 @Module({
-  imports: [AuthModule, RoleModule, PermissionModule, UserModule]
+  imports: [AuthModule, RoleModule, PermissionModule, UserModule],
 })
-
-export class ApiModule { }
+export class ApiModule {}

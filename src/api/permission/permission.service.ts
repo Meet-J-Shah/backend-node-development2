@@ -5,7 +5,10 @@ import { Repository, FindOptionsWhere } from 'typeorm';
 import { GlobalService } from '../../utils/global/global.service';
 import { ModelService } from '../../utils/model/model.service';
 import { Permission } from './entities/permission.entity';
-import { ServiceResDto, PaginationResDto } from '../../utils/global/dto/global.dto';
+import {
+  ServiceResDto,
+  PaginationResDto,
+} from '../../utils/global/dto/global.dto';
 import { CustomLogger } from 'src/utils/logger/logger.service';
 
 @Injectable()
@@ -16,7 +19,7 @@ export class PermissionService {
     private globalService: GlobalService,
     private readonly customLogger: CustomLogger,
     private modelService: ModelService,
-  ) { }
+  ) {}
 
   async findMany(
     where: FindOptionsWhere<Permission> = {},

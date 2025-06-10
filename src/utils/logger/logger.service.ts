@@ -8,40 +8,48 @@ export class CustomLogger implements LoggerService {
   private readonly logger;
 
   constructor(private readonly configService: ConfigService) {
-    const customFormat = format.printf(({ timestamp, level, message, ...meta }) => {
-      return `${timestamp} [${level}]: ${message} ${meta && Object.keys(meta).length ? JSON.stringify(meta) : ''}`;
-    });
+    const customFormat = format.printf(
+      ({ timestamp, level, message, ...meta }) => {
+        return `${timestamp} [${level}]: ${message} ${meta && Object.keys(meta).length ? JSON.stringify(meta) : ''}`;
+      },
+    );
 
     const transportsArray = [];
 
     if (this.configService.get<string>('LOG_TO_CONSOLE') === 'true') {
-      transportsArray.push(new transports.Console({
-        level: 'debug',
-        format: format.combine(
-          format.timestamp(),
-          format.colorize({ all:true }),
-          format.errors({ stack: true }),
-          customFormat,
-        ),
-      }));
+      transportsArray.push(
+        new transports.Console({
+          level: 'debug',
+          format: format.combine(
+            format.timestamp(),
+            format.colorize({ all: true }),
+            format.errors({ stack: true }),
+            customFormat,
+          ),
+        }),
+      );
     }
 
     if (this.configService.get<string>('LOG_TO_FILE') === 'true') {
-      transportsArray.push(new DailyRotateFile({
-        filename: 'logs/%DATE%-error.log',
-        datePattern: 'YYYY-MM-DD',
-        level: 'error',
-        maxSize: '20m',
-        maxFiles: '14d',
-      }));
+      transportsArray.push(
+        new DailyRotateFile({
+          filename: 'logs/%DATE%-error.log',
+          datePattern: 'YYYY-MM-DD',
+          level: 'error',
+          maxSize: '20m',
+          maxFiles: '14d',
+        }),
+      );
 
-      transportsArray.push(new DailyRotateFile({
-        filename: 'logs/%DATE%-combined.log',
-        datePattern: 'YYYY-MM-DD',
-        level: 'info',
-        maxSize: '20m',
-        maxFiles: '14d',
-      }));
+      transportsArray.push(
+        new DailyRotateFile({
+          filename: 'logs/%DATE%-combined.log',
+          datePattern: 'YYYY-MM-DD',
+          level: 'info',
+          maxSize: '20m',
+          maxFiles: '14d',
+        }),
+      );
     }
 
     this.logger = createLogger({

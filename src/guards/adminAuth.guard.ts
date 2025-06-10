@@ -11,7 +11,7 @@ import { AdminAuthDto } from '../api/auth/dto/auth.dto';
 
 @Injectable()
 export class AdminAuthGuard implements CanActivate {
-  constructor(private readonly authService: AuthService) { }
+  constructor(private readonly authService: AuthService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     // Get authorization parameters from headers object

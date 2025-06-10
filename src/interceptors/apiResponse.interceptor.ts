@@ -24,7 +24,8 @@ export class ApiResponseInterceptor implements NestInterceptor {
     return next.handle().pipe(
       map((data) => {
         const statusCode: number =
-          context.switchToHttp().getResponse().statusCode || HttpStatus.BAD_REQUEST;
+          context.switchToHttp().getResponse().statusCode ||
+          HttpStatus.BAD_REQUEST;
         // update message if not exist
         const message: string = data?.message || 'Okay';
         // prepare common response

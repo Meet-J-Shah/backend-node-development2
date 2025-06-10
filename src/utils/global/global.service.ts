@@ -9,9 +9,7 @@ import { CustomLogger } from '../logger/logger.service';
 
 @Injectable()
 export class GlobalService {
-  constructor(
-    private readonly customLogger: CustomLogger,
-  ) { }
+  constructor(private readonly customLogger: CustomLogger) {}
 
   /**
    * Global UTIL: set controller response
@@ -70,7 +68,10 @@ export class GlobalService {
         limit,
       };
     } catch (error) {
-      this.customLogger.error('Error while gtting pagination data::', error.stack);
+      this.customLogger.error(
+        'Error while gtting pagination data::',
+        error.stack,
+      );
       throw new InternalServerErrorException(error);
     }
   }
