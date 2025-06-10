@@ -1,0 +1,172 @@
+import {
+    Injectable,
+    BadRequestException,
+    InternalServerErrorException,
+  } from '@nestjs/common';
+  import { InjectRepository } from '@nestjs/typeorm';
+  import { Repository, In, Not } from 'typeorm';
+  
+  import { GlobalService } from '../../utils/global/global.service';
+  <% if (useBcrypt) { %>import { BcryptService } from '../../utils/bcrypt/bcrypt.service';<% } %>
+  <% if (hasRoleRelation) { %>import { Role } from '../role/entities/role.entity';<% } %>
+  import { <%= entityName %> } from './entities/<%= entityFileName %>.entity';
+  import {
+    PaginationResDto,
+    ServiceResDto,
+    TypeOrmDeleteResult,
+  } from '../../utils/global/dto/global.dto';
+  import {
+    <%= entityName %>BodyReqDto,
+    <%= entityName %>WhereDto,
+    <%= entityName %>BodyUpdateReqDto,
+  } from './dto/<%= entityFileName %>.dto';
+  import { ModelService } from '../../utils/model/model.service';
+  import { DeleteRollBackDto } from '../../utils/model/model.dto';
+  
+  @Injectable()
+  export class <%= entityName %>Service {
+    constructor(
+      @InjectRepository(<%= entityName %>)
+      private <%= entityVar %>Repository: Repository<<%= entityName %>>,
+      <% if (hasRoleRelation) { %>
+      @InjectRepository(Role)
+      private roleRepository: Repository<Role>,
+      <% } %>
+      private globalService: GlobalService,
+      <% if (useBcrypt) { %>private bcryptService: BcryptService,<% } %>
+      private modelService: ModelService,
+    ) {}
+  
+    async findMany(
+      where: any = {},
+      page: number,
+      limit: number,
+    ): Promise<ServiceResDto<<%= entityName %>[]>> {
+      const skipRecord = this.globalService.getSkipRecord(page, limit);
+      const [dataArray, dataCount] = await this.<%= entityVar %>Repository.findAndCount({
+        where,
+        take: limit,
+        skip: skipRecord,
+      });
+      const paginationData = this.globalService.setPagination(page, limit, dataCount);
+      return {
+        data: dataArray,
+        pagination: paginationData,
+      };
+    }
+  
+    async create(
+      createDto: <%= entityName %>BodyReqDto<% if (hasRoleRelation) { %><Role><% } %>,
+      createdByUser: <%= entityName %>,
+    ): Promise<<%= entityName %>> {
+      const existing = await this.<%= entityVar %>Repository.findOne({
+        where: { email: createDto.email },
+      });
+      if (existing) throw new BadRequestException('<%= entityName %> exists with this email.');
+  
+      <% if (hasRoleRelation) { %>
+      const roleIds = createDto.roles || [];
+      const roles = await this.roleRepository.find({ where: { id: In(roleIds) } });
+      if (roles.length !== roleIds.length) {
+        throw new BadRequestException('Some roles do not exist');
+      }
+      createDto.roles = roles;
+      <% } %>
+  
+      <% if (useBcrypt) { %>
+      createDto.password = await this.bcryptService.generatePassword(createDto.password);
+      <% } %>
+  
+      const entity = this.<%= entityVar %>Repository.create(createDto);
+      const saved = await this.<%= entityVar %>Repository.save(entity);
+      delete saved.password;
+      return saved;
+    }
+  
+    async findOne(id: string): Promise<<%= entityName %>> {
+      const data = await this.<%= entityVar %>Repository.findOne({
+        where: { id },
+        relations: { <% if (hasRoleRelation) { %>roles: true<% } %> },
+      });
+      if (!data) throw new BadRequestException('<%= entityName %> not found');
+      return data;
+    }
+  
+    async findOneForAuth(
+      whereDto: <%= entityName %>WhereDto,
+      isAdmin = false,
+      needPassword = false,
+    ): Promise<<%= entityName %>> {
+      const selectFields = ['id', 'email', 'firstName', 'lastName'];
+      if (needPassword) selectFields.push('password');
+      return await this.<%= entityVar %>Repository.findOne({
+        select: selectFields,
+        relations: { <% if (hasRoleRelation) { %>roles: { permissions: true }<% } %> },
+        where: {
+          ...whereDto,
+          <% if (hasRoleRelation) { %>roles: { isAdmin }<% } %>,
+        },
+      });
+    }
+  
+    async update(
+      updateDto: <%= entityName %>BodyUpdateReqDto<% if (hasRoleRelation) { %><Role><% } %>,
+      id: string,
+      updatedByUser: <%= entityName %>,
+      isRollback = false,
+    ): Promise<<%= entityName %>> {
+      const rollbackObj: DeleteRollBackDto = isRollback ? { withDeleted: true } : {};
+  
+      let existing = null;
+      if (updateDto?.email) {
+        existing = await this.<%= entityVar %>Repository.findOne({
+          where: { email: updateDto.email, id: Not(id) },
+          ...rollbackObj,
+        });
+        if (existing) throw new BadRequestException('<%= entityName %> already exists with this email');
+      }
+  
+      let entity = await this.<%= entityVar %>Repository.findOne({
+        where: { id },
+        ...rollbackObj,
+      });
+      if (!entity) throw new BadRequestException('<%= entityName %> not found');
+  
+      <% if (useBcrypt) { %>
+      if (updateDto?.password) {
+        entity.password = await this.bcryptService.generatePassword(updateDto.password);
+      }
+      <% } %>
+  
+      <% if (hasRoleRelation) { %>
+      if (updateDto?.roles) {
+        const roles = await this.roleRepository.find({ where: { id: In(updateDto.roles) } });
+        if (roles.length !== updateDto.roles.length) {
+          throw new BadRequestException('Some roles not found');
+        }
+        entity.roles = roles;
+      }
+      <% } %>
+  
+      entity = this.modelService.updateModelValue(entity, updateDto, updatedByUser);
+      entity.email = updateDto.email || entity.email;
+      entity.firstName = updateDto.firstName || entity.firstName;
+      entity.lastName = updateDto.lastName || entity.lastName;
+  
+      return await this.<%= entityVar %>Repository.save(entity);
+    }
+  
+    async delete(id: string): Promise<boolean> {
+      const data = await this.<%= entityVar %>Repository.findOne({
+        where: { id },
+        withDeleted: true,
+      });
+  
+      if (!data) throw new BadRequestException('<%= entityName %> not exists');
+      if (!data.deletedAt) throw new BadRequestException('Only soft-deleted records can be deleted');
+  
+      const result = await this.<%= entityVar %>Repository.delete(id);
+      return result.affected ? true : false;
+    }
+  }
+  

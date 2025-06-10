@@ -1,0 +1,17 @@
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne } from 'typeorm';
+
+@Entity()
+export class <%= name %> {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  <% fields.forEach(field => { %>
+    <% if (field.relation) { %>
+      @<%= field.relation.type %>(() => <%= field.relation.target %>, <%= field.relation.inverseSide ? `(target) => target.${field.relation.inverseSide}` : '' %>)
+      <%= field.name %>: <%= field.relation.isArray ? `${field.relation.target}[]` : field.relation.target %>;
+    <% } else { %>
+      @Column()
+      <%= field.name %>: <%= field.type %>;
+    <% } %>
+  <% }) %>
+}

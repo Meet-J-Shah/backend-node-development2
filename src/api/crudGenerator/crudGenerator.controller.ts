@@ -17,10 +17,10 @@ export class CrudGeneratorController {
     return new Promise((resolve, reject) => {
       exec(cmd, (error, stdout, stderr) => {
         if (error) {
-          console.error(`❌ Error:\n${stderr}`);
+          console.error(` Error:\n${stderr}`);
           reject({ message: 'Generation failed', error: stderr });
         } else {
-          console.log(`✅ Success:\n${stdout}`);
+          console.log(` Success:\n${stdout}`);
           resolve({
             message: `CRUD for '${name}' generated successfully.`,
             output: stdout,

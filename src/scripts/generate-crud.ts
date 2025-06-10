@@ -14,7 +14,7 @@ const rawFields = process.argv.slice(3);
 
 if (!name || rawFields.length === 0) {
   console.error(
-    `❌ Usage: npm run generate:crud user name:string age:number:nullable isActive:boolean:default=true`,
+    ` Usage: npm run generate:crud user name:string age:number:nullable isActive:boolean:default=true`,
   );
   process.exit(1);
 }
@@ -89,7 +89,7 @@ ${entityLines}
 `.trim();
 
 fs.writeFileSync(path.join(entityPath, entityFile), entityCode);
-console.log(`✅ Entity written to ${entityPath}/${entityFile}`);
+console.log(` Entity written to ${entityPath}/${entityFile}`);
 
 // 3. Generate DTOs
 if (!fs.existsSync(dtoPath)) fs.mkdirSync(dtoPath, { recursive: true });
@@ -110,7 +110,7 @@ fs.writeFileSync(
   `import { ${className}Dto } from './create-${name}.dto';\n\nexport class Update${className}Dto implements Partial<${className}Dto> {}\n`,
 );
 
-console.log(`✅ DTOs written to ${dtoPath}`);
+console.log(` DTOs written to ${dtoPath}`);
 
 // 4. Generate Migration
 execSync(

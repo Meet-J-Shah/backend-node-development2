@@ -4,6 +4,7 @@ import { RoleModule } from './role/role.module';
 import { PermissionModule } from './permission/permission.module';
 import { UserModule } from './user/user.module';
 import { CrudGeneratorModule } from './crudGenerator/crudGenerator.module';
+import { GenerateModule } from './generator/generate.module';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { CrudGeneratorModule } from './crudGenerator/crudGenerator.module';
     PermissionModule,
     UserModule,
     CrudGeneratorModule,
+    GenerateModule,
   ],
 })
 export class ApiModule {}
