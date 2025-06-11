@@ -1,7 +1,8 @@
 import { Processor, Process } from '@nestjs/bull';
 import { Job } from 'bull';
+import { execSync } from 'child_process';
 import * as ejs from 'ejs';
-import { writeFileSync, mkdirSync, existsSync } from 'fs';
+import { writeFileSync, mkdirSync, existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 
 @Processor('generate-queue')
@@ -17,14 +18,29 @@ export class GenerateProcessor {
       const fileName = name.toLowerCase();
       const fileNamePlural = pluralize(fileName);
       const entityName = className;
+      const tableName = className;
       const entityFileName = fileName;
       const entityVar = fileName;
+      const timestamp = Date.now();
       const constantName = className.toUpperCase(); // <--- add this line
+      const typeMap = {
+        string: 'varchar',
+        number: 'decimal(10,2)',
+        boolean: 'tinyint',
+        Date: 'timestamp',
+        int: 'int',
+        float: 'float',
+        text: 'text',
+        uuid: 'char(36)',
+      };
 
       const templateData = {
         name,
         fields,
         className,
+        tableName,
+        typeMap,
+        timestamp,
         camelName,
         fileName,
         fileNamePlural,
@@ -52,6 +68,7 @@ export class GenerateProcessor {
         'api',
         moduleName,
       );
+
       if (!existsSync(modulePath)) {
         mkdirSync(modulePath, { recursive: true });
         console.log('Created directory:', modulePath);
@@ -88,6 +105,11 @@ export class GenerateProcessor {
           fileName: 'permission.constant',
           outputName: `permission.constant.ts`,
         },
+        {
+          subDir: '',
+          fileName: 'module.migration',
+          outputName: `${timestamp}-create${moduleName}Table.ts`,
+        },
       ];
       for (const tpl of templates) {
         const templatePath = join(
@@ -101,20 +123,71 @@ export class GenerateProcessor {
 
         try {
           const output = await ejs.renderFile(templatePath, templateData);
+          if (tpl.fileName == 'module.migration') {
+            console.log('Migration is start');
+            const outputPath = join('src', 'db', 'migrations', tpl.outputName);
+            writeFileSync(outputPath, output);
+            console.log('Wrote file:', outputPath);
+            const configPath = join(
+              __dirname,
+              '..',
+              '..',
+              '..',
+              '..',
+              'src',
+              'configs',
+              'migration.config.ts',
+            );
 
+            const fileName = `${timestamp}-create${moduleName}Table`;
+            const className = `Create${name}Table${timestamp}`;
+
+            const importLine = `import { ${className} } from '../db/migrations/${fileName}';`;
+
+            // Read current config
+            let configText = readFileSync(configPath, 'utf-8');
+
+            // Prevent duplicate import
+            if (!configText.includes(className)) {
+              // Add import line at top
+              configText = `${importLine}\n${configText}`;
+
+              // Inject into export default array
+              configText = configText.replace(
+                /export default\s*\[/,
+                `export default [\n  ${className},`,
+              );
+
+              // Write back
+              writeFileSync(configPath, configText);
+              console.log(
+                ` Migration class "${className}" added to migration.config.ts`,
+              );
+            } else {
+              console.log(' Migration already exists in config.');
+            }
+          }
           const subDirPath = join(modulePath, tpl.subDir);
           if (!existsSync(subDirPath)) {
             mkdirSync(subDirPath, { recursive: true });
             console.log('Created directory:', subDirPath);
           }
           const outputPath = join(subDirPath, tpl.outputName);
+
           writeFileSync(outputPath, output);
           console.log('Wrote file:', outputPath);
         } catch (err) {
           console.error('Template/render error with', templatePath, err);
         }
       }
-
+      execSync('npm run build');
+      execSync('npm run format');
+      execSync(
+        `npx typeorm-ts-node-commonjs migration:run -d dist/src/data-source.js`,
+        {
+          stdio: 'inherit',
+        },
+      );
       console.log('Job processed successfully:', job.id);
       return { status: 'done' };
     } catch (err) {
@@ -122,26 +195,6 @@ export class GenerateProcessor {
       throw err;
     }
   }
-  // const { name, fields } = job.data;
-  // const moduleName = name.toLowerCase();
-
-  // const modulePath = join(__dirname, '..', '..', 'output', moduleName);
-  // if (!existsSync(modulePath)) mkdirSync(modulePath, { recursive: true });
-
-  //     for (const tpl of templates) {
-  //       const templatePath = join(
-  //         __dirname,
-  //         'templates',
-  //         'module',
-  //         tpl.subDir,
-  //         `${tpl.fileName}.ejs`,
-  //       );
-  //       const output = await ejs.renderFile(templatePath, { name, fields });
-  //       writeFileSync(join(modulePath, tpl.outputName), output);
-  //     }
-
-  //     return { status: 'done' };
-  //   }
 }
 function pluralize(str: string) {
   if (str.endsWith('y')) return str.slice(0, -1) + 'ies';
