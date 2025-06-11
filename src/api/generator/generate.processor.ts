@@ -1,4 +1,5 @@
 import { Processor, Process } from '@nestjs/bull';
+import * as fs from 'fs';
 import { Job } from 'bull';
 import { execSync } from 'child_process';
 import * as ejs from 'ejs';
@@ -180,6 +181,39 @@ export class GenerateProcessor {
           console.error('Template/render error with', templatePath, err);
         }
       }
+      try {
+        const path = join(
+          __dirname,
+          '..',
+          '..',
+          '..',
+          '..',
+          'src',
+          'api',
+          'api.module.ts',
+        );
+        let content = fs.readFileSync(path, 'utf-8');
+
+        const className2 = `${className}Module`;
+        const importPath = `./${moduleName}/${moduleName}.module`;
+
+        // Add import line
+        if (!content.includes(importPath)) {
+          content =
+            `import { ${className2} } from '${importPath}';\n` + content;
+        }
+
+        // Insert into imports array
+        content = content.replace(
+          /imports:\s*\[/,
+          `imports: [\n    ${className2},`,
+        );
+
+        fs.writeFileSync(path, content);
+      } catch (err) {
+        console.error('Error in updatng api module', err);
+      }
+
       execSync('npm run build');
       execSync('npm run format');
       execSync(
@@ -188,6 +222,9 @@ export class GenerateProcessor {
           stdio: 'inherit',
         },
       );
+
+      // configure the path to add end points
+
       console.log('Job processed successfully:', job.id);
       return { status: 'done' };
     } catch (err) {

@@ -7,7 +7,7 @@ import { <%= className %>Controller } from './<%= fileName %>.controller';
 import { <%= className %>Service } from './<%= fileName %>.service';
 <% if (hasRoleRelation) { %>import { Role } from '../role/entities/role.entity';<% } %>
 import { <%= className %> } from './entities/<%= fileName %>.entity';
-
+import { CustomLogger } from 'src/utils/logger/logger.service';
 @Module({
   imports: [
     TypeOrmModule.forFeature([<% if (hasRoleRelation) { %>Role, <% } %><%= className %>]),
@@ -15,7 +15,7 @@ import { <%= className %> } from './entities/<%= fileName %>.entity';
     <% if (hasUtilsModule) { %>UtilsModule,<% } %>
   ],
   controllers: [<%= className %>Controller],
-  providers: [<%= className %>Service],
+  providers: [<%= className %>Service,CustomLogger],
   exports: [<%= className %>Service],
 })
 export class <%= className %>Module {}
