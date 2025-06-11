@@ -2,7 +2,7 @@ import { Processor, Process } from '@nestjs/bull';
 import { Job } from 'bull';
 import * as ejs from 'ejs';
 import { writeFileSync, mkdirSync, existsSync } from 'fs';
-import { join, resolve } from 'path';
+import { join } from 'path';
 
 @Processor('generate-queue')
 export class GenerateProcessor {
@@ -36,11 +36,22 @@ export class GenerateProcessor {
         relatedEntityClass: '',
         relatedEntityFileName: '',
         hasRoleRelation: false,
+        hasUtilsModule: true,
+        hasAuthModule: true,
         // ...any more
       };
       const moduleName = name.toLowerCase();
 
-      const modulePath = join(__dirname, '..', '..', 'output', moduleName);
+      const modulePath = join(
+        __dirname,
+        '..',
+        '..',
+        '..',
+        '..',
+        'src',
+        'api',
+        moduleName,
+      );
       if (!existsSync(modulePath)) {
         mkdirSync(modulePath, { recursive: true });
         console.log('Created directory:', modulePath);
@@ -90,7 +101,13 @@ export class GenerateProcessor {
 
         try {
           const output = await ejs.renderFile(templatePath, templateData);
-          const outputPath = resolve('src', 'api');
+
+          const subDirPath = join(modulePath, tpl.subDir);
+          if (!existsSync(subDirPath)) {
+            mkdirSync(subDirPath, { recursive: true });
+            console.log('Created directory:', subDirPath);
+          }
+          const outputPath = join(subDirPath, tpl.outputName);
           writeFileSync(outputPath, output);
           console.log('Wrote file:', outputPath);
         } catch (err) {

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import {
     IsNotEmpty,
     MaxLength,
@@ -5,11 +6,9 @@ import {
     IsBoolean,
     IsOptional,
     IsInt,
-    IsArray,
   } from 'class-validator';
-  import { Transform } from 'class-transformer';
-  import { ApiProperty } from '@nestjs/swagger';
-  
+  import { Transform } from 'class-transformer'; 
+  import { IntersectionType } from '@nestjs/mapped-types';
   export class <%= className %>FullBodyReqDto {
     @IsString()
     @IsOptional()
@@ -103,14 +102,8 @@ import {
     hasSoftDeleted?: boolean;
   }
   
-  export class Update<%= className %>PermissionBodyReqDto {
-    @IsArray()
-    @IsOptional()
-    @ApiProperty()
-    connect?: string[];
+  export class UpdateAndDelete<%= className %>BodyReqDto extends IntersectionType(
+    Update<%= className %>BodyReqDto,
+    Delete<%= className %>BodyReqDto,
+  ) {}
   
-    @IsArray()
-    @IsOptional()
-    @ApiProperty()
-    disconnect?: string[];
-  }

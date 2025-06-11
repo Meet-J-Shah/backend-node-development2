@@ -1,14 +1,13 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import {
     Injectable,
     BadRequestException,
     InternalServerErrorException,
   } from '@nestjs/common';
   import { InjectRepository } from '@nestjs/typeorm';
-  import { Repository, In, Not } from 'typeorm';
+  import { Repository, In, Not,FindOptionsWhere } from 'typeorm';
   
   import { GlobalService } from '../../utils/global/global.service';
-  <% if (useBcrypt) { %>import { BcryptService } from '../../utils/bcrypt/bcrypt.service';<% } %>
-  <% if (hasRoleRelation) { %>import { Role } from '../role/entities/role.entity';<% } %>
   import { <%= entityName %> } from './entities/<%= entityFileName %>.entity';
   import {
     PaginationResDto,
@@ -16,32 +15,31 @@ import {
     TypeOrmDeleteResult,
   } from '../../utils/global/dto/global.dto';
   import {
-    <%= entityName %>BodyReqDto,
-    <%= entityName %>WhereDto,
-    <%= entityName %>BodyUpdateReqDto,
+    <%= entityName %>FullBodyReqDto,
+
+    Create<%= entityName %>BodyReqDto,
+    Update<%= entityName %>BodyReqDto,
+    UpdateAndDelete<%= className %>BodyReqDto
   } from './dto/<%= entityFileName %>.dto';
   import { ModelService } from '../../utils/model/model.service';
   import { DeleteRollBackDto } from '../../utils/model/model.dto';
+  import { CustomLogger } from 'src/utils/logger/logger.service';
   
   @Injectable()
   export class <%= entityName %>Service {
     constructor(
       @InjectRepository(<%= entityName %>)
       private <%= entityVar %>Repository: Repository<<%= entityName %>>,
-      <% if (hasRoleRelation) { %>
-      @InjectRepository(Role)
-      private roleRepository: Repository<Role>,
-      <% } %>
       private globalService: GlobalService,
-      <% if (useBcrypt) { %>private bcryptService: BcryptService,<% } %>
       private modelService: ModelService,
+      private readonly customLogger: CustomLogger,
     ) {}
   
     async findMany(
-      where: any = {},
+      where: FindOptionsWhere<<%= entityName %>>  = {},
       page: number,
       limit: number,
-    ): Promise<ServiceResDto<<%= entityName %>[]>> {
+    ): Promise<ServiceResDto<<%= entityName %>[]>> {try{
       const skipRecord = this.globalService.getSkipRecord(page, limit);
       const [dataArray, dataCount] = await this.<%= entityVar %>Repository.findAndCount({
         where,
@@ -52,35 +50,25 @@ import {
       return {
         data: dataArray,
         pagination: paginationData,
-      };
+      };}catch (error) {
+        this.customLogger.error('Error while finding roles::', error.stack);
+        throw new InternalServerErrorException(error);
+      }
     }
   
     async create(
-      createDto: <%= entityName %>BodyReqDto<% if (hasRoleRelation) { %><Role><% } %>,
-      createdByUser: <%= entityName %>,
+      createDto:Create<%= entityName %>BodyReqDto,
     ): Promise<<%= entityName %>> {
-      const existing = await this.<%= entityVar %>Repository.findOne({
-        where: { email: createDto.email },
+      
+  
+      const createEntity: <%= entityName %> = this.<%= entityVar %>Repository.create({
+        ...createDto,
       });
-      if (existing) throw new BadRequestException('<%= entityName %> exists with this email.');
-  
-      <% if (hasRoleRelation) { %>
-      const roleIds = createDto.roles || [];
-      const roles = await this.roleRepository.find({ where: { id: In(roleIds) } });
-      if (roles.length !== roleIds.length) {
-        throw new BadRequestException('Some roles do not exist');
+      const saveEntity: <%= entityName %> = await this.<%= entityVar %>Repository.save(createEntity);
+      if (!saveEntity) {
+        throw new BadRequestException('Fail to create');
       }
-      createDto.roles = roles;
-      <% } %>
-  
-      <% if (useBcrypt) { %>
-      createDto.password = await this.bcryptService.generatePassword(createDto.password);
-      <% } %>
-  
-      const entity = this.<%= entityVar %>Repository.create(createDto);
-      const saved = await this.<%= entityVar %>Repository.save(entity);
-      delete saved.password;
-      return saved;
+      return this.modelService.removeUserBy(saveEntity);
     }
   
     async findOne(id: string): Promise<<%= entityName %>> {
@@ -92,39 +80,13 @@ import {
       return data;
     }
   
-    async findOneForAuth(
-      whereDto: <%= entityName %>WhereDto,
-      isAdmin = false,
-      needPassword = false,
-    ): Promise<<%= entityName %>> {
-      const selectFields = ['id', 'email', 'firstName', 'lastName'];
-      if (needPassword) selectFields.push('password');
-      return await this.<%= entityVar %>Repository.findOne({
-        select: selectFields,
-        relations: { <% if (hasRoleRelation) { %>roles: { permissions: true }<% } %> },
-        where: {
-          ...whereDto,
-          <% if (hasRoleRelation) { %>roles: { isAdmin }<% } %>,
-        },
-      });
-    }
   
     async update(
-      updateDto: <%= entityName %>BodyUpdateReqDto<% if (hasRoleRelation) { %><Role><% } %>,
+      updateDto: UpdateAndDelete<%= className %>BodyReqDto,
       id: string,
-      updatedByUser: <%= entityName %>,
       isRollback = false,
     ): Promise<<%= entityName %>> {
       const rollbackObj: DeleteRollBackDto = isRollback ? { withDeleted: true } : {};
-  
-      let existing = null;
-      if (updateDto?.email) {
-        existing = await this.<%= entityVar %>Repository.findOne({
-          where: { email: updateDto.email, id: Not(id) },
-          ...rollbackObj,
-        });
-        if (existing) throw new BadRequestException('<%= entityName %> already exists with this email');
-      }
   
       let entity = await this.<%= entityVar %>Repository.findOne({
         where: { id },
@@ -132,26 +94,7 @@ import {
       });
       if (!entity) throw new BadRequestException('<%= entityName %> not found');
   
-      <% if (useBcrypt) { %>
-      if (updateDto?.password) {
-        entity.password = await this.bcryptService.generatePassword(updateDto.password);
-      }
-      <% } %>
-  
-      <% if (hasRoleRelation) { %>
-      if (updateDto?.roles) {
-        const roles = await this.roleRepository.find({ where: { id: In(updateDto.roles) } });
-        if (roles.length !== updateDto.roles.length) {
-          throw new BadRequestException('Some roles not found');
-        }
-        entity.roles = roles;
-      }
-      <% } %>
-  
-      entity = this.modelService.updateModelValue(entity, updateDto, updatedByUser);
-      entity.email = updateDto.email || entity.email;
-      entity.firstName = updateDto.firstName || entity.firstName;
-      entity.lastName = updateDto.lastName || entity.lastName;
+      entity = this.modelService.updateModelValue(entity, updateDto);
   
       return await this.<%= entityVar %>Repository.save(entity);
     }
