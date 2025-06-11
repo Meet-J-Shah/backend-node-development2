@@ -1,0 +1,51 @@
+import { MigrationInterface, QueryRunner, Table } from "typeorm";
+
+export class Create<%= name %>Table<%= timestamp %> implements MigrationInterface {
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.createTable(new Table({
+      name: "<%= tableName %>",
+      columns: [
+        {
+          name: "id",
+          type: "int",
+          isPrimary: true,
+          isGenerated: true,
+          generationStrategy: "increment",
+        },
+<% fields.forEach(field => { %>
+  <% if (!field.relation) { %>
+        {
+          name: "<%= field.name %>",
+          type: "<%= typeMap[field.type] || field.dbType || 'varchar' %>",
+          <%= field.required === false ? "isNullable: true," : "" %>
+        },
+  <% } else { %>
+        {
+          name: "<%= field.name %>Id",
+          type: "int",
+        },
+  <% } %>
+<% }) %>
+        {
+          name: "created_at",
+          type: "timestamp",
+          default: "now()",
+        },
+        {
+          name: "updated_at",
+          type: "timestamp",
+          default: "now()",
+        },
+        {
+          name: "deleted_at",
+          type: "timestamp",
+          isNullable: true,
+        },
+      ],
+    }));
+  }
+
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.dropTable("<%= tableName %>");
+  }
+}

@@ -1,0 +1,109 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import {
+    IsNotEmpty,
+    MaxLength,
+    IsString,
+    IsBoolean,
+    IsOptional,
+    IsInt,
+  } from 'class-validator';
+  import { Transform } from 'class-transformer'; 
+  import { IntersectionType } from '@nestjs/mapped-types';
+  export class <%= className %>FullBodyReqDto {
+    @IsString()
+    @IsOptional()
+    @MaxLength(20)
+    name?: string;
+  
+    @IsString()
+    @IsOptional()
+    description?: string;
+  
+    @IsBoolean()
+    @IsOptional()
+    isAdmin?: boolean;
+  
+    @IsBoolean()
+    @IsOptional()
+    hasPublished?: boolean;
+  
+    @IsBoolean()
+    @IsOptional()
+    hasSoftDeleted?: boolean;
+  }
+  
+  export class FindMany<%= className %>QueryReq {
+    @IsInt()
+    @Transform(({ value }) => Number.parseInt(value))
+    page: number;
+  
+    @IsInt()
+    @Transform(({ value }) => Number.parseInt(value))
+    limit: number;
+  }
+  
+  export class FindOne<%= className %>ParamReqDto {
+    @IsString()
+    @IsNotEmpty()
+    <%= name %>Id: string;
+  }
+  
+  export class Create<%= className %>BodyReqDto {
+    <% fields.forEach(field => { %>
+    <% if (field.apiProperty) { %>
+    @ApiProperty()
+    <% } %>
+    <% if (field.type === 'string') { %>
+    @IsString()
+    <% } else if (field.type === 'boolean') { %>
+    @IsBoolean()
+    <% } else if (field.type === 'number' || field.type === 'int') { %>
+    @IsInt()
+    <% } else if (field.type === 'array') { %>
+    @IsArray()
+    <% } %>
+    <% if (field.optional) { %>
+    @IsOptional()
+    <% } else { %>
+    @IsNotEmpty()
+    <% } %>
+    <% if (field.maxLength) { %>
+    @MaxLength(<%= field.maxLength %>)
+    <% } %>
+    <%= field.name %>: <%= field.tsType || field.type %>;
+    <% }) %>
+  }
+  
+  export class Update<%= className %>BodyReqDto {
+    <% fields.forEach(field => { if (field.updatable !== false) { %>
+    <% if (field.apiProperty) { %>
+    @ApiProperty()
+    <% } %>
+    <% if (field.type === 'string') { %>
+    @IsString()
+    <% } else if (field.type === 'boolean') { %>
+    @IsBoolean()
+    <% } else if (field.type === 'number' || field.type === 'int') { %>
+    @IsInt()
+    <% } else if (field.type === 'array') { %>
+    @IsArray()
+    <% } %>
+    @IsOptional()
+    <% if (field.maxLength) { %>
+    @MaxLength(<%= field.maxLength %>)
+    <% } %>
+    <%= field.name %>?: <%= field.tsType || field.type %>;
+    <% }}); %>
+  }
+  
+  export class Delete<%= className %>BodyReqDto {
+    @IsBoolean()
+    @IsOptional()
+    hasSoftDeleted?: boolean;
+  }
+  
+  export class UpdateAndDelete<%= className %>BodyReqDto extends IntersectionType(
+    Update<%= className %>BodyReqDto,
+    Delete<%= className %>BodyReqDto,
+  ) {}
+  

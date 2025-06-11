@@ -1,0 +1,115 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import {
+    Injectable,
+    BadRequestException,
+    InternalServerErrorException,
+  } from '@nestjs/common';
+  import { InjectRepository } from '@nestjs/typeorm';
+  import { Repository, In, Not,FindOptionsWhere } from 'typeorm';
+  
+  import { GlobalService } from '../../utils/global/global.service';
+  import { <%= entityName %> } from './entities/<%= entityFileName %>.entity';
+  import {
+    PaginationResDto,
+    ServiceResDto,
+    TypeOrmDeleteResult,
+  } from '../../utils/global/dto/global.dto';
+  import {
+    <%= entityName %>FullBodyReqDto,
+
+    Create<%= entityName %>BodyReqDto,
+    Update<%= entityName %>BodyReqDto,
+    UpdateAndDelete<%= className %>BodyReqDto
+  } from './dto/<%= entityFileName %>.dto';
+  import { ModelService } from '../../utils/model/model.service';
+  import { DeleteRollBackDto } from '../../utils/model/model.dto';
+  import { CustomLogger } from 'src/utils/logger/logger.service';
+  
+  @Injectable()
+  export class <%= entityName %>Service {
+    constructor(
+      @InjectRepository(<%= entityName %>)
+      private <%= entityVar %>Repository: Repository<<%= entityName %>>,
+      private globalService: GlobalService,
+      private modelService: ModelService,
+      private readonly customLogger: CustomLogger,
+    ) {}
+  
+    async findMany(
+      where: FindOptionsWhere<<%= entityName %>>  = {},
+      page: number,
+      limit: number,
+    ): Promise<ServiceResDto<<%= entityName %>[]>> {try{
+      const skipRecord = this.globalService.getSkipRecord(page, limit);
+      const [dataArray, dataCount] = await this.<%= entityVar %>Repository.findAndCount({
+        where,
+        take: limit,
+        skip: skipRecord,
+      });
+      const paginationData = this.globalService.setPagination(page, limit, dataCount);
+      return {
+        data: dataArray,
+        pagination: paginationData,
+      };}catch (error) {
+        this.customLogger.error('Error while finding roles::', error.stack);
+        throw new InternalServerErrorException(error);
+      }
+    }
+  
+    async create(
+      createDto:Create<%= entityName %>BodyReqDto,
+    ): Promise<<%= entityName %>> {
+      
+  
+      const createEntity: <%= entityName %> = this.<%= entityVar %>Repository.create({
+        ...createDto,
+      });
+      const saveEntity: <%= entityName %> = await this.<%= entityVar %>Repository.save(createEntity);
+      if (!saveEntity) {
+        throw new BadRequestException('Fail to create');
+      }
+      return this.modelService.removeUserBy(saveEntity);
+    }
+  
+    async findOne(id: string): Promise<<%= entityName %>> {
+      const data = await this.<%= entityVar %>Repository.findOne({
+        where: { id },
+        relations: { <% if (hasRoleRelation) { %>roles: true<% } %> },
+      });
+      if (!data) throw new BadRequestException('<%= entityName %> not found');
+      return data;
+    }
+  
+  
+    async update(
+      updateDto: UpdateAndDelete<%= className %>BodyReqDto,
+      id: string,
+      isRollback = false,
+    ): Promise<<%= entityName %>> {
+      const rollbackObj: DeleteRollBackDto = isRollback ? { withDeleted: true } : {};
+  
+      let entity = await this.<%= entityVar %>Repository.findOne({
+        where: { id },
+        ...rollbackObj,
+      });
+      if (!entity) throw new BadRequestException('<%= entityName %> not found');
+  
+      entity = this.modelService.updateModelValue(entity, updateDto);
+  
+      return await this.<%= entityVar %>Repository.save(entity);
+    }
+  
+    async delete(id: string): Promise<boolean> {
+      const data = await this.<%= entityVar %>Repository.findOne({
+        where: { id },
+        withDeleted: true,
+      });
+  
+      if (!data) throw new BadRequestException('<%= entityName %> not exists');
+      if (!data.deletedAt) throw new BadRequestException('Only soft-deleted records can be deleted');
+  
+      const result = await this.<%= entityVar %>Repository.delete(id);
+      return result.affected ? true : false;
+    }
+  }
+  

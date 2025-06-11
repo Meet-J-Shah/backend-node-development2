@@ -1,0 +1,21 @@
+import { Module, forwardRef } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+
+<% if (hasUtilsModule) { %>import { UtilsModule } from '../../utils/utils.module';<% } %>
+<% if (hasAuthModule) { %>import { AuthModule } from '../auth/auth.module';<% } %>
+import { <%= className %>Controller } from './<%= fileName %>.controller';
+import { <%= className %>Service } from './<%= fileName %>.service';
+<% if (hasRoleRelation) { %>import { Role } from '../role/entities/role.entity';<% } %>
+import { <%= className %> } from './entities/<%= fileName %>.entity';
+import { CustomLogger } from 'src/utils/logger/logger.service';
+@Module({
+  imports: [
+    TypeOrmModule.forFeature([<% if (hasRoleRelation) { %>Role, <% } %><%= className %>]),
+    <% if (hasAuthModule) { %>forwardRef(() => AuthModule),<% } %>
+    <% if (hasUtilsModule) { %>UtilsModule,<% } %>
+  ],
+  controllers: [<%= className %>Controller],
+  providers: [<%= className %>Service,CustomLogger],
+  exports: [<%= className %>Service],
+})
+export class <%= className %>Module {}
