@@ -76,6 +76,11 @@ export default class PermissionSeeder implements Seeder {
           },
           {
             module: 'User',
+            action: 'Rallback Delete',
+            slug: 'admin::user::rollback',
+          },
+          {
+            module: 'User',
             action: 'Hard Delete',
             slug: 'admin::user::hardDelete',
           },

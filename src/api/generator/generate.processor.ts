@@ -276,9 +276,11 @@ export class GenerateProcessor {
       execSync('npm run seed:run');
 
       console.log('Job processed successfully:', job.id);
+      await job.moveToCompleted('done', true);
       return { status: 'done' };
     } catch (err) {
       console.error('Error in GenerateProcessor:', err);
+      await job.moveToFailed(err);
       throw err;
     }
   }
