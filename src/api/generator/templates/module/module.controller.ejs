@@ -67,7 +67,7 @@ export class <%= className %>Controller {
   @HttpCode(HttpStatus.OK)
   @PermissionDecorator(<%= camelName %>PermissionsConstant.ADMIN_<%= constantName %>_FIND_ONE)
   async findOne(@Param() paramReqDto:  FindOne<%= className %>ParamReqDto ): Promise<ControllerResDto<<%= className %>>> {
-    const result = await this.<%= camelName %>Service.findOne(paramReqDto.<%= className %>Id);
+    const result = await this.<%= camelName %>Service.findOne(paramReqDto.id);
     return this.globalService.setControllerResponse(result);
   }
 
@@ -79,7 +79,7 @@ export class <%= className %>Controller {
     @Param() paramReqDto: FindOne<%= className %>ParamReqDto,
     @Body() bodyReq: Update<%= className %>BodyReqDto,
   ): Promise<ControllerResDto<<%= className %>>> {
-    const result = await this.<%= camelName %>Service.update(bodyReq, paramReqDto.<%= className %>Id);
+    const result = await this.<%= camelName %>Service.update(bodyReq, paramReqDto.id);
     return this.globalService.setControllerResponse(result, '<%= className %> updated successfully.');
   }
 
@@ -87,7 +87,7 @@ export class <%= className %>Controller {
   @HttpCode(HttpStatus.OK)
   @PermissionDecorator(<%= camelName %>PermissionsConstant.ADMIN_<%= constantName %>_HARD_DELETE)
   async hardDelete(@Param() paramReqDto: FindOne<%= className %>ParamReqDto ): Promise<ControllerResDto<{ isDeleted: boolean }>> {
-    const isDeleted = await this.<%= camelName %>Service.delete(paramReqDto.<%= className %>Id);
+    const isDeleted = await this.<%= camelName %>Service.delete(paramReqDto.id);
     return this.globalService.setControllerResponse({ isDeleted }, '<%= className %> deleted successfully.');
   }
 
@@ -99,7 +99,7 @@ export class <%= className %>Controller {
     @Param() paramReqDto: FindOne<%= className %>ParamReqDto ,
   ): Promise<ControllerResDto<{ isDeleted: boolean }>> {
     const bodyReq: Delete<%= className %>BodyReqDto = { hasSoftDeleted: true };
-    const result = await this.<%= camelName %>Service.update(bodyReq, paramReqDto.<%= className %>Id);
+    const result = await this.<%= camelName %>Service.update(bodyReq, paramReqDto.id);
     return this.globalService.setControllerResponse({ isDeleted: !!result }, '<%= className %> deleted successfully.');
   }
 
@@ -111,7 +111,7 @@ export class <%= className %>Controller {
     @Param() paramReqDto: FindOne<%= className %>ParamReqDto ,
   ): Promise<ControllerResDto<<%= className %>>> {
     const bodyReq: Delete<%= className %>BodyReqDto = { hasSoftDeleted: false };
-    const result = await this.<%= camelName %>Service.update(bodyReq, paramReqDto.<%= className %>Id, true);
+    const result = await this.<%= camelName %>Service.update(bodyReq, paramReqDto.id, true);
     return this.globalService.setControllerResponse(result, '<%= className %> rollback successful.');
   }
 }

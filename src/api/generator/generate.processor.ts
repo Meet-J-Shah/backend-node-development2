@@ -24,6 +24,7 @@ export class GenerateProcessor {
       const entityVar = fileName;
       const timestamp = Date.now();
       const constantName = className.toUpperCase(); // <--- add this line
+      const constantFileName = `${camelName}PermissionsConstant`;
       const typeMap = {
         string: 'varchar',
         number: 'decimal(10,2)',
@@ -43,6 +44,7 @@ export class GenerateProcessor {
         typeMap,
         timestamp,
         camelName,
+        constantFileName,
         fileName,
         fileNamePlural,
         entityName,
@@ -111,6 +113,11 @@ export class GenerateProcessor {
           fileName: 'module.migration',
           outputName: `${timestamp}-create${moduleName}Table.ts`,
         },
+        {
+          subDir: '',
+          fileName: 'updatePermission.seeder',
+          outputName: `${timestamp}-updatePermissionsTable.seeder.ts`,
+        },
       ];
       for (const tpl of templates) {
         const templatePath = join(
@@ -168,15 +175,22 @@ export class GenerateProcessor {
               console.log(' Migration already exists in config.');
             }
           }
-          const subDirPath = join(modulePath, tpl.subDir);
-          if (!existsSync(subDirPath)) {
-            mkdirSync(subDirPath, { recursive: true });
-            console.log('Created directory:', subDirPath);
-          }
-          const outputPath = join(subDirPath, tpl.outputName);
+          if (tpl.fileName == 'updatePermission.seeder') {
+            console.log('Migration is start');
+            const outputPath = join('src', 'db', 'seeders', tpl.outputName);
+            writeFileSync(outputPath, output);
+            console.log('Wrote file:', outputPath);
+          } else {
+            const subDirPath = join(modulePath, tpl.subDir);
+            if (!existsSync(subDirPath)) {
+              mkdirSync(subDirPath, { recursive: true });
+              console.log('Created directory:', subDirPath);
+            }
+            const outputPath = join(subDirPath, tpl.outputName);
 
-          writeFileSync(outputPath, output);
-          console.log('Wrote file:', outputPath);
+            writeFileSync(outputPath, output);
+            console.log('Wrote file:', outputPath);
+          }
         } catch (err) {
           console.error('Template/render error with', templatePath, err);
         }
@@ -210,6 +224,42 @@ export class GenerateProcessor {
         );
 
         fs.writeFileSync(path, content);
+
+        // change entity config.ts
+
+        const entityPath = join(
+          __dirname,
+          '..',
+          '..',
+          '..',
+          '..',
+          'src',
+          'configs',
+          'entity.config.ts',
+        );
+
+        let content2 = fs.readFileSync(entityPath, 'utf-8');
+
+        const importLine = `import { ${name} } from '../api/${moduleName}/entities/${moduleName}.entity';`;
+        if (!content2.includes(importLine)) {
+          content2 = `${importLine}\n` + content2;
+        }
+
+        const exportRegex = /export\s+default\s+\[\s*([\s\S]*?)\s*\];/m;
+        const match = exportRegex.exec(content2);
+
+        if (match) {
+          const currentEntities = match[1];
+          if (!currentEntities.includes(entityName)) {
+            const newEntities = currentEntities.trim()
+              ? `${currentEntities.trim()},\n  ${entityName}`
+              : `  ${entityName}`;
+            const newExport = `export default [\n  ${newEntities}\n];`;
+            content = content.replace(exportRegex, newExport);
+          }
+        }
+
+        fs.writeFileSync(entityPath, content2);
       } catch (err) {
         console.error('Error in updatng api module', err);
       }
@@ -222,8 +272,8 @@ export class GenerateProcessor {
           stdio: 'inherit',
         },
       );
-
-      // configure the path to add end points
+      execSync('npm run seed:config');
+      execSync('npm run seed:run');
 
       console.log('Job processed successfully:', job.id);
       return { status: 'done' };

@@ -1,4 +1,3 @@
-import { ProductModule } from './product/product.module';
 import { Module } from '@nestjs/common';
 import { AuthModule } from './auth/auth.module';
 import { RoleModule } from './role/role.module';
@@ -9,7 +8,6 @@ import { GenerateModule } from './generator/generate.module';
 
 @Module({
   imports: [
-    ProductModule,
     AuthModule,
     RoleModule,
     PermissionModule,
