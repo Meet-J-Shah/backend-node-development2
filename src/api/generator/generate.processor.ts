@@ -1,7 +1,7 @@
 import { Processor, Process } from '@nestjs/bull';
 import * as fs from 'fs';
 import { Job } from 'bull';
-import { execSync } from 'child_process';
+// import { execSync } from 'child_process';
 import * as ejs from 'ejs';
 import { writeFileSync, mkdirSync, existsSync, readFileSync } from 'fs';
 import { join } from 'path';
@@ -13,7 +13,7 @@ export class GenerateProcessor {
     console.log('GenerateProcessor received job:', job.id, job.data);
 
     try {
-      const { name, fields } = job.data;
+      const { name, fields, creationConfig } = job.data;
       const className = name.charAt(0).toUpperCase() + name.slice(1);
       const camelName = className.charAt(0).toLowerCase() + className.slice(1);
       const fileName = name.toLowerCase();
@@ -42,6 +42,7 @@ export class GenerateProcessor {
         className,
         tableName,
         typeMap,
+        creationConfig,
         timestamp,
         camelName,
         constantFileName,
@@ -261,19 +262,19 @@ export class GenerateProcessor {
 
         fs.writeFileSync(entityPath, content2);
       } catch (err) {
-        console.error('Error in updatng api module', err);
+        console.error('Error in updating api module', err);
       }
 
-      execSync('npm run build');
-      execSync('npm run format');
-      execSync(
-        `npx typeorm-ts-node-commonjs migration:run -d dist/src/data-source.js`,
-        {
-          stdio: 'inherit',
-        },
-      );
-      execSync('npm run seed:config');
-      execSync('npm run seed:run');
+      // execSync('npm run build');
+      // execSync('npm run format');
+      // execSync(
+      //   `npx typeorm-ts-node-commonjs migration:run -d dist/src/data-source.js`,
+      //   {
+      //     stdio: 'inherit',
+      //   },
+      // );
+      // execSync('npm run seed:config');
+      // execSync('npm run seed:run');
 
       console.log('Job processed successfully:', job.id);
       await job.moveToCompleted('done', true);
