@@ -26,8 +26,13 @@ class RelationDto {
   @IsValidInverseSide({ message: 'Invalid inverseSide for target entity.' })
   inverseSide?: string;
 
+  @IsOptional()
   @IsBoolean()
-  isArray: boolean;
+  uniDirectional?: boolean = false;
+
+  @IsOptional()
+  @IsBoolean()
+  isArray?: boolean = false;
 }
 
 class FieldDto {

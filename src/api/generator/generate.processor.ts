@@ -60,18 +60,10 @@ export class GenerateProcessor {
         hasAuthModule: true,
         // ...any more
       };
-      const moduleName = name.toLowerCase();
 
-      const modulePath = join(
-        __dirname,
-        '..',
-        '..',
-        '..',
-        '..',
-        'src',
-        'api',
-        moduleName,
-      );
+      const appPath = join(__dirname, '..', '..', '..', '..', 'src', 'api');
+
+      const modulePath = join(appPath, fileName);
 
       if (!existsSync(modulePath)) {
         mkdirSync(modulePath, { recursive: true });
@@ -82,27 +74,27 @@ export class GenerateProcessor {
         {
           subDir: 'entities',
           fileName: 'module.entity',
-          outputName: `${moduleName}.entity.ts`,
+          outputName: `${fileName}.entity.ts`,
         },
         {
           subDir: '',
           fileName: 'module.controller',
-          outputName: `${moduleName}.controller.ts`,
+          outputName: `${fileName}.controller.ts`,
         },
         {
           subDir: '',
           fileName: 'module.service',
-          outputName: `${moduleName}.service.ts`,
+          outputName: `${fileName}.service.ts`,
         },
         {
           subDir: '',
           fileName: 'module.module',
-          outputName: `${moduleName}.module.ts`,
+          outputName: `${fileName}.module.ts`,
         },
         {
           subDir: 'dto',
           fileName: 'module.dto',
-          outputName: `${moduleName}.dto.ts`,
+          outputName: `${fileName}.dto.ts`,
         },
         {
           subDir: 'constants',
@@ -112,7 +104,7 @@ export class GenerateProcessor {
         {
           subDir: '',
           fileName: 'module.migration',
-          outputName: `${timestamp}-create${moduleName}Table.ts`,
+          outputName: `${timestamp}-create${fileName}Table.ts`,
         },
         {
           subDir: '',
@@ -148,10 +140,10 @@ export class GenerateProcessor {
               'migration.config.ts',
             );
 
-            const fileName = `${timestamp}-create${moduleName}Table`;
+            const fileName2 = `${timestamp}-create${fileName}Table`;
             const className = `Create${name}Table${timestamp}`;
 
-            const importLine = `import { ${className} } from '../db/migrations/${fileName}';`;
+            const importLine = `import { ${className} } from '../db/migrations/${fileName2}';`;
 
             // Read current config
             let configText = readFileSync(configPath, 'utf-8');
@@ -210,7 +202,7 @@ export class GenerateProcessor {
         let content = fs.readFileSync(path, 'utf-8');
 
         const className2 = `${className}Module`;
-        const importPath = `./${moduleName}/${moduleName}.module`;
+        const importPath = `./${fileName}/${fileName}.module`;
 
         // Add import line
         if (!content.includes(importPath)) {
@@ -241,7 +233,7 @@ export class GenerateProcessor {
 
         let content2 = fs.readFileSync(entityPath, 'utf-8');
 
-        const importLine = `import { ${name} } from '../api/${moduleName}/entities/${moduleName}.entity';`;
+        const importLine = `import { ${name} } from '../api/${fileName}/entities/${fileName}.entity';`;
         if (!content2.includes(importLine)) {
           content2 = `${importLine}\n` + content2;
         }
@@ -263,7 +255,83 @@ export class GenerateProcessor {
       } catch (err) {
         console.error('Error in updating api module', err);
       }
+      for (const field of fields) {
+        if (
+          field.relation &&
+          (!field.relation.uniDirectional || field.relation.type == 'OneToMany')
+        ) {
+          // console.log('mj', field);
+          const moduleName = field.relation.target.toLowerCase();
+          const relationModulePath = join(
+            appPath,
+            moduleName,
+            'entities',
+            `${moduleName}.entity.ts`,
+          );
+          console.log(relationModulePath);
+          let content = fs.readFileSync(relationModulePath, 'utf-8');
 
+          const importLine = `import { ${name} } from '../../${fileName}/entities/${fileName}.entity';\n`;
+          if (!content.includes(name)) {
+            console.log('import');
+            content = importLine + content;
+          }
+          let propertyBlock = '';
+          const inverseName =
+            field.relation.inverseSide ||
+            `${fileName}${field.name.charAt(0).toUpperCase() + field.name.slice(1)}`;
+          // 2. Create the property block
+          if (field.relation.type == 'OneToOne') {
+            propertyBlock = `
+            @OneToOne(() => ${name}, (${fileName}) => ${fileName}.${field.name})
+          ${inverseName}: ${name};`;
+          } else if (field.relation.type == 'OneToMany') {
+            propertyBlock = `
+            @ManyToOne(() => ${name}, (${fileName}) => ${fileName}.${field.name})
+           ${inverseName}: ${name};`;
+          } else if (field.relation.type == 'ManyToOne') {
+            propertyBlock = `
+            @OneToMany(() => ${name}, (${fileName}) => ${fileName}.${field.name})
+           ${inverseName}: ${name}[];`;
+          } else if (field.relation.type == 'ManyToMany') {
+            propertyBlock = `
+            @ManyToMany(() => ${name}, (${fileName}) => ${fileName}.${field.name})
+         ${inverseName}: ${name}[];`;
+          } else {
+            console.error('Invalid Relation Type');
+          }
+
+          const insertIndex = content.lastIndexOf('}');
+          content =
+            content.slice(0, insertIndex) +
+            propertyBlock +
+            '\n}' +
+            content.slice(insertIndex + 1);
+
+          // Match the relationalFields block
+          const match = content.match(
+            /static\s+relationalFields\s*=\s*{([\s\S]*?)}\s+as\s+const;/,
+          );
+          if (!match) {
+            const insertIndex = content.lastIndexOf('}');
+            const relationalBlock = `\n  static relationalFields = {\n    ${inverseName}: true\n  } as const;\n`;
+            content =
+              content.slice(0, insertIndex) +
+              relationalBlock +
+              content.slice(insertIndex);
+          } else {
+            const fieldsBlock = match[1].trim().replace(/,?\s*$/, '');
+            const newRelationalFields = `static relationalFields = {\n  ${fieldsBlock},\n   ${inverseName} : true\n} as const;`;
+
+            content = content.replace(
+              /static\s+relationalFields\s*=\s*{[\s\S]*?}\s*as\s+const\s*;/,
+              newRelationalFields,
+            );
+          }
+
+          fs.writeFileSync(relationModulePath, content);
+        }
+      }
       // execSync('npm run build');
       // execSync('npm run format');
       // execSync(

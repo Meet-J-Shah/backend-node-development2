@@ -62,7 +62,7 @@ export class InverseSideValidConstraint
     const targetEntity = entitiesMap[object.target];
     const selectFields = (targetEntity as any)?.selectFields;
 
-    this.logger.debug(`${value} mj ${targetEntity?.name || 'undefined'}`);
+    // this.logger.debug(`${value} mj ${targetEntity?.name || 'undefined'}`);
 
     if (!selectFields || typeof value !== 'string') {
       this.logger.warn(
@@ -75,7 +75,10 @@ export class InverseSideValidConstraint
     const validKeys = getFieldPaths(selectFields);
     this.logger.debug(`${value} validKeys: ${validKeys.join(', ')}`);
 
-    return validKeys.includes(value);
+    if (validKeys.includes(value)) {
+      return false;
+    }
+    return true;
   }
 
   defaultMessage(args: ValidationArguments) {

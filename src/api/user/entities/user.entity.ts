@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { Exclude } from 'class-transformer';
 import {
   Entity,
@@ -8,6 +9,7 @@ import {
   DeleteDateColumn,
   ManyToMany,
   JoinTable,
+  OneToOne,
 } from 'typeorm';
 
 import { Role } from '../../role/entities/role.entity';
@@ -83,4 +85,20 @@ export class User {
     },
   })
   roles: Role[];
+
+  static selectFields = {
+    id: true,
+    email: true,
+    firstName: true,
+    lastName: true,
+    createdAt: true,
+    updatedAt: true,
+    publishedAt: true,
+  } as const;
+
+  static relationalFields = {
+    roles: true,
+    createdBy: true,
+    updatedBy: true,
+  } as const;
 }
