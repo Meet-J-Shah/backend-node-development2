@@ -248,7 +248,6 @@ export class GenerateProcessor {
 
         const exportRegex = /export\s+default\s+\[\s*([\s\S]*?)\s*\];/m;
         const match = exportRegex.exec(content2);
-
         if (match) {
           const currentEntities = match[1];
           if (!currentEntities.includes(entityName)) {
@@ -256,7 +255,7 @@ export class GenerateProcessor {
               ? `${currentEntities.trim()},\n  ${entityName}`
               : `  ${entityName}`;
             const newExport = `export default [\n  ${newEntities}\n];`;
-            content = content.replace(exportRegex, newExport);
+            content2 = content2.replace(exportRegex, newExport);
           }
         }
 
