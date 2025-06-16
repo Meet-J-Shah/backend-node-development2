@@ -1,29 +1,111 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne, CreateDateColumn, UpdateDateColumn, DeleteDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  OneToMany,
+  ManyToOne,
+  ManyToMany,
+  OneToOne,
+  JoinTable,
+  JoinColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+  DeleteDateColumn
+} from 'typeorm';
 import { Exclude } from 'class-transformer';
+import {User} from "../../user/entities/user.entity";
+
+
+<%
+  const importedRelations = new Set();
+%>
+<% fields.forEach(field => { %>
+  <% if (field.relation && field.relation.target !== 'User' && !importedRelations.has(field.relation.target)) { 
+       const relationFile = field.relation.target.toLowerCase();
+       importedRelations.add(field.relation.target);
+  %>
+import { <%= field.relation.target %> } from "../../<%= relationFile %>/entities/<%= relationFile %>.entity";
+  <% } %>
+<% }) %>
 
 @Entity()
 export class <%= name %> {
   @PrimaryGeneratedColumn()
   id: string;
-
 <% fields.forEach(field => { %>
   <% if (field.relation) { %>
-  @<%= field.relation.type %>(() => <%= field.relation.target %><%= field.relation.inverseSide ? `, (target) => target.${field.relation.inverseSide}` : '' %>)
-  <%= field.name %>: <%= field.relation.isArray ? `${field.relation.target}[]` : field.relation.target %>;
+    @<%= field.relation.type %>(
+      () => <%= field.relation.target %><% if (field.relation.inverseSide) { %>, (target) => target.<%= field.relation.inverseSide %><% } %>
+    )
+    <% if (field.relation.type === 'ManyToMany') { %>@JoinTable()<% } %>
+    <%= field.name %>: <%- field.relation.isArray ? `${field.relation.target}[]` : `${field.relation.target}` %>;
+
+  
   <% } else { %>
-  @Column()
-  <%= field.name %>: <%= field.type %>;
+    @Column({
+      <% if (field.type) { %>type: '<%= field.dtype %>',<% } %>
+      <% if (field.length) { %>length: <%= field.length %>,<% } %>
+      <% if (field.nullable !== undefined) { %>nullable: <%= field.nullable %>,<% } %>
+      <% if (field.unique) { %>unique: true,<% } %>
+      <% if (field.default !== undefined) { %>default: <%= JSON.stringify(field.default) %>,<% } %>
+    })
+    <%= field.name %>: <%= field.type || field.dtype %>;
   <% } %>
+  
 <% }) %>
 
+<% if (creationConfig?.withTimestamps) { %>
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
+<% } %>
 
+<% if (creationConfig?.withSoftDelete) { %>
   @Exclude()
   @DeleteDateColumn({ name: 'deleted_at' })
   deletedAt: Date;
+<% } %>
+
+<% if (creationConfig?.operator) { %>
+
+    @ManyToOne(() => User, {
+      cascade: true,
+      onUpdate: 'CASCADE',
+      onDelete: 'SET NULL',
+      nullable: true,
+    })
+    @JoinColumn({ name: 'created_by' })
+    createdBy?: User;
+
+    @ManyToOne(() => User, {
+      cascade: true,
+      onUpdate: 'CASCADE',
+      onDelete: 'SET NULL',
+      nullable: true,
+    })
+    @JoinColumn({ name: 'updated_by' })
+    updatedBy?: User;
+
+
+  
+
+  <% if (creationConfig?.withSoftDelete) { %>
+    @Exclude()
+    @ManyToOne(() => User, {
+      cascade: true,
+      onUpdate: 'CASCADE',
+      onDelete: 'SET NULL',
+      nullable: true,
+    })
+    @JoinColumn({ name: 'deleted_by' })
+    deletedBy?: User;
+    <% } %>
+<% } %>
+
+
+
+
 }

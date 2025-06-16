@@ -12,9 +12,18 @@ import { GenerateProcessor } from './generate.processor';
         host: 'localhost',
         port: 6379,
       },
+      defaultJobOptions: {
+        removeOnComplete: true, // Remove job when completed successfully
+        removeOnFail: true, // Remove job when failed
+        attempts: 1, // Don't retry failed jobs
+      },
     }),
     BullModule.registerQueue({
       name: 'generate-queue',
+      settings: {
+        stalledInterval: 0, // Disable stalled job detection
+        maxStalledCount: 0, // Don't reprocess "stalled" jobs
+      },
     }),
   ],
   controllers: [GenerateController],

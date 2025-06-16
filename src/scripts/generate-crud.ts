@@ -120,6 +120,4 @@ execSync(
   },
 );
 
-console.log(
-  `🎉 Done! Entity, DTOs, and migration for '${className}' generated.`,
-);
+console.log(` Done! Entity, DTOs, and migration for '${className}' generated.`);
