@@ -2,6 +2,7 @@
 import {
   Entity,
   PrimaryGeneratedColumn,
+  PrimaryColumn,
   Column,
   OneToMany,
   ManyToOne,
@@ -90,13 +91,18 @@ export class <%= name %> {
   <% } else { %>
     @Column({
       <% if (field.type) { %>type: '<%= field.dtype %>',<% } %>
+      <% if (field.enum) { %>enum: <%- JSON.stringify(field.enum) %>,<% } %>
       <% if (field.dbName) { %>name: '<%= field.dbName %>',<% } else{ %>name: snakeCase('<%= field.name %>') <% } %>,
       <% if (field.length) { %>length: <%= field.length %>,<% } %>
       <% if (field.nullable !== undefined) { %>nullable: <%= field.nullable %>,<% } %>
       <% if (field.unique) { %>unique: true,<% } %>
-      <% if (field.default !== undefined) { %>default: <%= JSON.stringify(field.default) %>,<% } %>
+      <% if (field.default !== undefined) { %>default: <%- JSON.stringify(field.default) %>,<% } %>
     })
-    <%= field.name %>: <%= field.type || field.dtype %>;
+    <%= field.name %>:
+    <% if (field.enum) { %><%- field.enum.map(v => `'${v}'`).join(' | ') %>
+    <% } else { %>
+      <%= field.type || field.dtype %>;
+     <% } %>
   <% } %>
   
 <% }) %>

@@ -123,6 +123,11 @@ class FieldDto {
   unique?: boolean;
 
   @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  enum?: string[];
+
+  @IsOptional()
   @IsNumber()
   default?: number;
 
@@ -173,6 +178,7 @@ export class GenerateDto {
   fields: FieldDto[];
 
   @IsArray()
+  @IsOptional()
   @ValidateNested({ each: true })
   @Type(() => primaryFieldDto)
   primaryFields: primaryFieldDto[];
