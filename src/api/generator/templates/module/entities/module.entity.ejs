@@ -14,6 +14,7 @@ import {
   DeleteDateColumn
 } from 'typeorm';
 import { Exclude } from 'class-transformer';
+import { snakeCase } from 'lodash';
 import {User} from "../../user/entities/user.entity";
 
 
@@ -31,8 +32,33 @@ import { <%= field.relation.target %> } from "../../<%= relationFile %>/entities
 
 @Entity()
 export class <%= name %> {
-  @PrimaryGeneratedColumn()
-  id: string;
+
+  <% if (primaryFields) {%>
+    <% if (primaryFields.length === 1) {%>
+      @PrimaryGeneratedColumn({ type: 
+          <% if (primaryFields[0].dtype) { %>'<%= primaryFields[0].dtype %>'
+          <% } else{ %>'bigint' <% } %>,
+          <% if (primaryFields[0].dbName) { %>name: '<%= primaryFields[0].dbName %>',
+          <% } else{ %>name: snakeCase('<%= primaryFields[0].name %>') <% } %>
+        })
+      <%= primaryFields[0].name %>: <% if (primaryFields[0].type) { %><%= primaryFields[0].type %>
+        <% } else{ %>string <% } %>;
+    <% } else { %>
+          <% primaryFields.forEach(primaryField => { %>
+            @PrimaryColumn({ type: 
+              <% if (primaryField.dtype) { %>'<%= primaryField.dtype %>'
+              <% } else{ %>'bigint' <% } %>,
+              <% if (primaryField.dbName) { %>name: '<%= primaryField.dbName %>',
+              <% } else{ %>name: snakeCase('<%= primaryField.name %>') <% } %>
+            })
+            <%= primaryField.name %> : <% if (primaryField.type) { %><%= primaryField.type %>
+              <% } else{ %>string <% } %>;
+          <% }) %>
+    <% } %>
+  <% } else { %>
+      @PrimaryGeneratedColumn({ type: 'bigint', name: 'id' })
+      id: string;
+  <% } %>
 <% fields.forEach(field => { %>
   <% if (field.relation) {%>
     <% let targetLower =field.relation.target.toLowerCase(); %>
@@ -64,6 +90,7 @@ export class <%= name %> {
   <% } else { %>
     @Column({
       <% if (field.type) { %>type: '<%= field.dtype %>',<% } %>
+      <% if (field.dbName) { %>name: '<%= field.dbName %>',<% } else{ %>name: snakeCase('<%= field.name %>') <% } %>,
       <% if (field.length) { %>length: <%= field.length %>,<% } %>
       <% if (field.nullable !== undefined) { %>nullable: <%= field.nullable %>,<% } %>
       <% if (field.unique) { %>unique: true,<% } %>

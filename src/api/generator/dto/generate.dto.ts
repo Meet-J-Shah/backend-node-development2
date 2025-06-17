@@ -81,10 +81,12 @@ class RelationDto {
 
   @IsOptional()
   @IsString()
+  @IsIn(['CASCADE', 'SET NULL', 'RESTRICT', 'NO ACTION'])
   onDelete?: 'CASCADE' | 'SET NULL' | 'RESTRICT' | 'NO ACTION';
 
   @IsOptional()
   @IsString()
+  @IsIn(['CASCADE', 'SET NULL', 'RESTRICT', 'NO ACTION'])
   onUpdate?: 'CASCADE' | 'SET NULL' | 'RESTRICT' | 'NO ACTION';
 
   @IsOptional()
@@ -95,6 +97,10 @@ class RelationDto {
 class FieldDto {
   @IsString()
   name: string;
+
+  @IsString()
+  @IsOptional()
+  dbName?: string;
 
   @IsOptional()
   @IsString()
@@ -125,7 +131,24 @@ class FieldDto {
   @Type(() => RelationDto)
   relation?: RelationDto;
 }
+class primaryFieldDto {
+  @IsString()
+  name: string;
 
+  @IsString()
+  @IsOptional()
+  dbName?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['string', 'number'])
+  type?: 'string' | 'number';
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['int', 'bigint', 'uuid'])
+  dtype?: 'int' | 'bigint' | 'uuid';
+}
 class CreationConfigDto {
   @IsOptional()
   @IsBoolean()
@@ -148,6 +171,11 @@ export class GenerateDto {
   @ValidateNested({ each: true })
   @Type(() => FieldDto)
   fields: FieldDto[];
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => primaryFieldDto)
+  primaryFields: primaryFieldDto[];
 
   @IsOptional()
   @ValidateNested()

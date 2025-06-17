@@ -5,6 +5,7 @@ import {
     IsString,
     IsBoolean,
     IsOptional,
+    IsArray,
     IsInt,
   } from 'class-validator';
   import { Transform } from 'class-transformer'; 
@@ -50,50 +51,95 @@ import {
   
   export class Create<%= className %>BodyReqDto {
     <% fields.forEach(field => { %>
-    <% if (field.apiProperty) { %>
-    @ApiProperty()
-    <% } %>
-    <% if (field.type === 'string') { %>
-    @IsString()
-    <% } else if (field.type === 'boolean') { %>
-    @IsBoolean()
-    <% } else if (field.type === 'number' || field.type === 'int') { %>
-    @IsInt()
-    <% } else if (field.type === 'array') { %>
-    @IsArray()
-    <% } %>
-    <% if (field.optional) { %>
-    @IsOptional()
-    <% } else { %>
-    @IsNotEmpty()
-    <% } %>
-    <% if (field.maxLength) { %>
-    @MaxLength(<%= field.maxLength %>)
-    <% } %>
-    <%= field.name %>: <%= field.tsType || field.type %>;
+      <% if (field.apiProperty) { %>
+      @ApiProperty()
+      <% } %>
+    
+      <% if (field.relation) { %>
+        <% if (['OneToOne', 'ManyToOne'].includes(field.relation.type)) { %> 
+          @IsOptional()
+          @IsString()
+          <%= field.name %>Id?: string;
+        <% } else { %>
+          @IsOptional()
+          @IsArray()
+          @IsString({ each: true })
+          <%= pluralize.singular(field.name) %>Ids?: string[];
+        <% } %>
+    
+      <% } else { %>
+        <% if (field.type === 'string') { %>
+        @IsString()
+        <% } else if (field.type === 'boolean') { %>
+        @IsBoolean()
+        <% } else if (field.type === 'number' || field.type === 'int') { %>
+        @IsInt()
+        <% } else if (field.type === 'array') { %>
+        @IsArray()
+
+        <% } else { %>
+        @IsNotEmpty()
+        <% } %>
+    
+        <% if (field.maxLength) { %>
+        @MaxLength(<%= field.maxLength %>)
+        <% } %>
+       
+    
+        <% if (!field.nullable) { %>
+          @IsOptional()
+          <%= field.name %>?: <%= field.tsType || field.type %>;
+        <% } else { %>
+          <%= field.name %>: <%= field.tsType || field.type %>;
+        <% } %>
+      <% } %>
     <% }) %>
+    
+    
   }
   
   export class Update<%= className %>BodyReqDto {
-    <% fields.forEach(field => { if (field.updatable !== false) { %>
-    <% if (field.apiProperty) { %>
-    @ApiProperty()
-    <% } %>
-    <% if (field.type === 'string') { %>
-    @IsString()
-    <% } else if (field.type === 'boolean') { %>
-    @IsBoolean()
-    <% } else if (field.type === 'number' || field.type === 'int') { %>
-    @IsInt()
-    <% } else if (field.type === 'array') { %>
-    @IsArray()
-    <% } %>
-    @IsOptional()
-    <% if (field.maxLength) { %>
-    @MaxLength(<%= field.maxLength %>)
-    <% } %>
-    <%= field.name %>?: <%= field.tsType || field.type %>;
-    <% }}); %>
+    <% fields.forEach(field => { %>
+      <% if (field.apiProperty) { %>
+      @ApiProperty()
+      <% } %>
+    
+      <% if (field.relation) { %>
+        <% if (['OneToOne', 'ManyToOne'].includes(field.relation.type)) { %> 
+          @IsOptional()
+          @IsString()
+          <%= field.name %>Id?: string;
+        <% } else { %>
+          @IsOptional()
+          @IsArray()
+          @IsString({ each: true })
+          <%= pluralize.singular(field.name) %>Ids?: string[];
+        <% } %>
+    
+      <% } else { %>
+        <% if (field.type === 'string') { %>
+        @IsString()
+        <% } else if (field.type === 'boolean') { %>
+        @IsBoolean()
+        <% } else if (field.type === 'number' || field.type === 'int') { %>
+        @IsInt()
+        <% } else if (field.type === 'array') { %>
+        @IsArray()
+    
+    
+
+ 
+        <% } else { %>
+        @IsNotEmpty()
+        <% } %>
+    
+        <% if (field.maxLength) { %>
+        @MaxLength(<%= field.maxLength %>)
+        <% } %>
+        @IsOptional()
+        <%= field.name %>?: <%= field.tsType || field.type %>;
+      <% } %>
+    <% }) %>
   }
   
   export class Delete<%= className %>BodyReqDto {

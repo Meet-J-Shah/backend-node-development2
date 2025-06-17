@@ -5,6 +5,7 @@ import { Job } from 'bull';
 import * as ejs from 'ejs';
 import { writeFileSync, mkdirSync, existsSync, readFileSync } from 'fs';
 import { join } from 'path';
+import * as pluralize from 'pluralize';
 
 @Processor('generate-queue')
 export class GenerateProcessor {
@@ -13,7 +14,7 @@ export class GenerateProcessor {
     console.log('GenerateProcessor received job:', job.id, job.data);
 
     try {
-      const { name, fields, creationConfig } = job.data;
+      const { name, fields, creationConfig, primaryFields } = job.data;
       const className = name.charAt(0).toUpperCase() + name.slice(1);
       const camelName = className.charAt(0).toLowerCase() + className.slice(1);
       const fileName = name.toLowerCase();
@@ -39,6 +40,7 @@ export class GenerateProcessor {
       const templateData = {
         name,
         fields,
+        primaryFields,
         className,
         tableName,
         typeMap,
@@ -58,6 +60,7 @@ export class GenerateProcessor {
         hasRoleRelation: false,
         hasUtilsModule: true,
         hasAuthModule: true,
+        pluralize,
         // ...any more
       };
 
@@ -268,12 +271,11 @@ export class GenerateProcessor {
             'entities',
             `${moduleName}.entity.ts`,
           );
-          console.log(relationModulePath);
+          // console.log(relationModulePath);
           let content = fs.readFileSync(relationModulePath, 'utf-8');
 
           const importLine = `import { ${name} } from '../../${fileName}/entities/${fileName}.entity';\n`;
           if (!content.includes(name)) {
-            console.log('import');
             content = importLine + content;
           }
           let propertyBlock = '';
@@ -368,9 +370,4 @@ export class GenerateProcessor {
       throw err;
     }
   }
-}
-function pluralize(str: string) {
-  if (str.endsWith('y')) return str.slice(0, -1) + 'ies';
-  if (str.endsWith('s')) return str + 'es';
-  return str + 's';
 }
