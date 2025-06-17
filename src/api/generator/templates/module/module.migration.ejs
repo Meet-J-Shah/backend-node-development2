@@ -1,22 +1,45 @@
 import { MigrationInterface, QueryRunner, Table } from "typeorm";
 
+
 export class Create<%= name %>Table<%= timestamp %> implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.createTable(new Table({
       name: "<%= tableName %>",
       columns: [
+      <% if (primaryFields && primaryFields.length === 1) { %>
         {
-          name: "id",
-          type: "int",
+          name: '<%= primaryFields[0].dbName || snakeCase(primaryFields[0].name) %>',
+          type: '<%= primaryFields[0].dtype || "bigint" %>',
           isPrimary: true,
           isGenerated: true,
-          generationStrategy: "increment",
+          generationStrategy: '<%= primaryFields[0].dtype === "uuid" ? "uuid" : "increment" %>',
         },
+      <% } else if (primaryFields && primaryFields.length > 1) { %>
+        <% primaryFields.forEach((field, index) => { %>
+          {
+            name: '<%= field.dbName || snakeCase(field.name) %>',
+            type: '<%= field.dtype || "bigint" %>',
+            isPrimary: true<%= index < primaryFields.length - 1 ? ',' : '' %>
+          },
+        <% }); %>
+      <% } else { %>
+        {
+          name: 'id',
+          type: 'bigint',
+          isPrimary: true,
+          isGenerated: true,
+          generationStrategy: 'increment',
+        },
+      <% } %>
 <% fields.forEach(field => { %>
   <% if (!field.relation) { %>
         {
           name: "<%= field.name %>",
-          type: "<%= typeMap[field.type] || field.dbType || 'varchar' %>",
+          <% if (field.dtype === 'enum') { %>
+            type: "enum('<%- field.enum.join("','") %>')",
+          <% } else { %>
+          type: "<%= field.dtype ||  typeMap[field.type] || 'varchar' %>",
+          <% }  %>
           <%= field.required === false ? "isNullable: true," : "" %>
         },
   <% } else { %>

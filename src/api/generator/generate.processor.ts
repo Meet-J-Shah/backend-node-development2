@@ -6,7 +6,7 @@ import * as ejs from 'ejs';
 import { writeFileSync, mkdirSync, existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import * as pluralize from 'pluralize';
-
+import { snakeCase } from 'lodash';
 @Processor('generate-queue')
 export class GenerateProcessor {
   @Process('generate-crud')
@@ -61,6 +61,7 @@ export class GenerateProcessor {
         hasUtilsModule: true,
         hasAuthModule: true,
         pluralize,
+        snakeCase,
         // ...any more
       };
 
