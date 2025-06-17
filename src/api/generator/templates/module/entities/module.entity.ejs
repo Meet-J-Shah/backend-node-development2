@@ -34,10 +34,16 @@ export class <%= name %> {
   @PrimaryGeneratedColumn()
   id: string;
 <% fields.forEach(field => { %>
-  <% if (field.relation) { %>
+  <% if (field.relation) {%>
+    <% let targetLower =field.relation.target.toLowerCase(); %>
+    <% let generatedInverse =name.toLowerCase()+field.name.charAt(0).toUpperCase() + field.name.slice(1); %>
     @<%= field.relation.type %>(
-      () => <%= field.relation.target %><% if (field.relation.inverseSide) { %>, (target) => target.<%= field.relation.inverseSide %><% } %>
+      () => <%= field.relation.target %><% if (field.relation.inverseSide) { %>, (<%= targetLower %>) => <%= targetLower %>.<%= field.relation.inverseSide %>
+        <% } else if(!field.relation.uniDirectional){ %>
+, (<%= targetLower %>) => <%= targetLower %>.<%= generatedInverse %>
+<% } %>
     )
+    <% if (field.relation.type === 'OneToOne') { %>@JoinColumn()<% } %>
     <% if (field.relation.type === 'ManyToMany') { %>@JoinTable()<% } %>
     <%= field.name %>: <%- field.relation.isArray ? `${field.relation.target}[]` : `${field.relation.target}` %>;
 
@@ -106,6 +112,30 @@ export class <%= name %> {
 <% } %>
 
 
+
+  static selectFields = {
+    id: true,
+<% fields.forEach(field => { if (!field.relation) { %>    <%= field.name %>: true,
+<% }}) %>
+<% if (creationConfig) { %>
+<% if (creationConfig.withTimestamps) { %>    createdAt: true,
+    updatedAt: true,
+<% } %>
+<% if (creationConfig.operator) { %>    createdBy: true,
+    updatedBy: true,
+<% if (creationConfig.withSoftDelete) { %>    // deletedAt is excluded (excluded by @Exclude())
+<% } } %>
+  } as const;
+
+  static relationalFields = {
+<% fields.forEach(field => { if (field.relation) { %>    <%= field.name %>: true,
+<% }}) %>
+<% if (creationConfig.operator) { %>    createdBy: true,
+    updatedBy: true,
+<% if (creationConfig.withSoftDelete) { %>    deletedBy: true,
+<% } } %>
+  } as const;
+<% } %>
 
 
 }
