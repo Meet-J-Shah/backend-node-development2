@@ -40,11 +40,24 @@ export class <%= name %> {
     @<%= field.relation.type %>(
       () => <%= field.relation.target %><% if (field.relation.inverseSide) { %>, (<%= targetLower %>) => <%= targetLower %>.<%= field.relation.inverseSide %>
         <% } else if(!field.relation.uniDirectional){ %>
-, (<%= targetLower %>) => <%= targetLower %>.<%= generatedInverse %>
+            , (<%= targetLower %>) => <%= targetLower %>.<%= generatedInverse %>
+        <% } %>
+   ,{
+      cascade: <%= field.relation.cascade ?? false%>, 
+      <% if (['OneToOne', 'ManyToOne'].includes(field.relation.type)) { %> 
+        onUpdate: '<%- field.relation.onUpdate ?? 'CASCADE'%>',
+        onDelete: '<%- field.relation.onDelete ?? 'SET NULL'%>',
+       <% if (field.relation.nullable !== undefined) { %>nullable: <%= field.relation.nullable %>,<% } %>
+      <% } %> 
+    } 
+  )
+    <% if (field.relation.type === 'ManyToMany') { %>  
+
+      @JoinTable(<%- field.relation.joinTable ? JSON.stringify(field.relation.joinTable, null, 2) : '' %>)
+<% } else if (['OneToOne', 'ManyToOne'].includes(field.relation.type)) { %>
+  <% if (field.relation.joinColumn) { %>@JoinColumn(<%- JSON.stringify(field.relation.joinColumn, null, 2) %>)<% } %>
+<% } else if (field.relation.type === 'OneToMany') { %>
 <% } %>
-    )
-    <% if (field.relation.type === 'OneToOne') { %>@JoinColumn()<% } %>
-    <% if (field.relation.type === 'ManyToMany') { %>@JoinTable()<% } %>
     <%= field.name %>: <%- field.relation.isArray ? `${field.relation.target}[]` : `${field.relation.target}` %>;
 
   

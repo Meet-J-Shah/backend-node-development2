@@ -286,9 +286,25 @@ export class GenerateProcessor {
             @OneToOne(() => ${name}, (${fileName}) => ${fileName}.${field.name})
           ${inverseName}: ${name};`;
           } else if (field.relation.type == 'OneToMany') {
-            propertyBlock = `
-            @ManyToOne(() => ${name}, (${fileName}) => ${fileName}.${field.name})
-           ${inverseName}: ${name};`;
+            let joinColumnBlock = '';
+            if (
+              field.relation.joinColumn?.name ||
+              field.relation.joinColumn?.referencedColumnName
+            ) {
+              joinColumnBlock = `${JSON.stringify(field.relation.joinColumn, null, 2)}\n`;
+            }
+            const options: string[] = [];
+            if (field.relation.cascade !== undefined)
+              options.push(`cascade: ${field.relation.cascade}`);
+            if (field.relation.onDelete)
+              options.push(`onDelete: '${field.relation.onDelete}'`);
+            if (field.relation.onUpdate)
+              options.push(`onUpdate: '${field.relation.onUpdate}'`);
+            if (field.relation.nullable !== undefined)
+              options.push(`nullable: ${field.relation.nullable}`);
+
+            propertyBlock = `@ManyToOne(() => ${name}, (${fileName}) => ${fileName}.${field.name} ${options.length ? `, {\n  ${options.join(',\n  ')}\n}` : ''})
+              @JoinColumn( ${joinColumnBlock} ) ${inverseName}: ${name};`;
           } else if (field.relation.type == 'ManyToOne') {
             propertyBlock = `
             @OneToMany(() => ${name}, (${fileName}) => ${fileName}.${field.name})

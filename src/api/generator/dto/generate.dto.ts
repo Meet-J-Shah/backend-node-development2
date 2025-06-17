@@ -6,6 +6,8 @@ import {
   IsNumber,
   IsInt,
   ValidateNested,
+  IsObject,
+  IsIn,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import {
@@ -13,8 +15,37 @@ import {
   IsValidInverseSide,
 } from '../../../decorators/relationValid.decorator';
 
+class JoinColumnOptionsDto {
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  referencedColumnName?: string;
+}
+
+class JoinTableOptionsDto {
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => JoinColumnOptionsDto)
+  joinColumn?: JoinColumnOptionsDto;
+
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => JoinColumnOptionsDto)
+  inverseJoinColumn?: JoinColumnOptionsDto;
+}
+
 class RelationDto {
   @IsString()
+  @IsIn(['OneToOne', 'OneToMany', 'ManyToOne', 'ManyToMany'])
   type: 'OneToOne' | 'OneToMany' | 'ManyToOne' | 'ManyToMany';
 
   @IsString()
@@ -33,6 +64,32 @@ class RelationDto {
   @IsOptional()
   @IsBoolean()
   isArray?: boolean = false;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => JoinColumnOptionsDto)
+  joinColumn?: JoinColumnOptionsDto;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => JoinTableOptionsDto)
+  joinTable?: JoinTableOptionsDto;
+
+  @IsOptional()
+  @IsBoolean()
+  cascade?: boolean = false;
+
+  @IsOptional()
+  @IsString()
+  onDelete?: 'CASCADE' | 'SET NULL' | 'RESTRICT' | 'NO ACTION';
+
+  @IsOptional()
+  @IsString()
+  onUpdate?: 'CASCADE' | 'SET NULL' | 'RESTRICT' | 'NO ACTION';
+
+  @IsOptional()
+  @IsBoolean()
+  nullable?: boolean = true;
 }
 
 class FieldDto {
