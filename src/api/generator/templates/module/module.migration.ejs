@@ -1,10 +1,14 @@
-import { MigrationInterface, QueryRunner, Table } from "typeorm";
+import {   MigrationInterface,
+  QueryRunner,
+  Table,
+  TableColumn,
+  TableForeignKey } from "typeorm";
 
 
 export class Create<%= name %>Table<%= timestamp %> implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.createTable(new Table({
-      name: "<%= tableName %>",
+      name: "<%= dbTableName %>",
       columns: [
       <% if (primaryFields && primaryFields.length === 1) { %>
         {
@@ -65,32 +69,278 @@ export class Create<%= name %>Table<%= timestamp %> implements MigrationInterfac
           <% if (field.unique) { %>isUnique: true,<% } %>
         },
   <% } else { %>
-        {
-          name: "<%= field.name %>Id",
-          type: "int",
-        },
+    <% if (['OneToOne', 'ManyToOne'].includes(field.relation.type)) { %>
+      { 
+        name: '<%= field.relation.joinColumn?.name ||  snakeCase(field.name)+'_id' %>', 
+        type: 'bigint', 
+        isNullable: true 
+      },
+    <% } %>
   <% } %>
 <% }) %>
+      <% if (creationConfig?.withTimestamps) { %>
         {
-          name: "created_at",
-          type: "timestamp",
-          default: "now()",
+          name: 'created_at',
+          type: 'timestamp',
+          default: 'CURRENT_TIMESTAMP',
         },
         {
-          name: "updated_at",
-          type: "timestamp",
-          default: "now()",
+          name: 'updated_at',
+          type: 'timestamp',
+          default: 'CURRENT_TIMESTAMP',
+          onUpdate: 'CURRENT_TIMESTAMP',
         },
+      <% } %>
+
+      <% if (creationConfig?.withSoftDelete) { %>
         {
-          name: "deleted_at",
-          type: "timestamp",
+          name: 'deleted_at',
+          type: 'timestamp',
           isNullable: true,
         },
+      <% } %>
+
+      <% if (creationConfig?.operator) { %>
+          {
+            name: 'created_by',
+            type: 'bigint',
+            isNullable: true,
+          },
+          {
+            name: 'updated_by',
+            type: 'bigint',
+            isNullable: true,
+          },
+        <% if (creationConfig.withSoftDelete) { %>
+          {
+            name: 'deleted_by',
+            type: 'bigint',
+            isNullable: true,
+          },
+        <% } %>
+      <% } %>
       ],
-    }));
+    }),true,);
+
+    // Foreign keys
+    await queryRunner.createForeignKeys('<%= dbTableName %>', [
+    <% if (creationConfig?.operator) { %>  
+       
+        new TableForeignKey({
+          columnNames: ['created_by'],
+          referencedTableName: 'user',
+          referencedColumnNames: ['id'],
+          onDelete: 'SET NULL',
+          onUpdate: 'CASCADE',
+        }),
+        new TableForeignKey({
+          columnNames: ['updated_by'],
+          referencedTableName: 'user',
+          referencedColumnNames: ['id'],
+          onDelete: 'SET NULL',
+          onUpdate: 'CASCADE',
+        }),
+      <% if (creationConfig.withSoftDelete) { %>
+        new TableForeignKey({
+          columnNames: ['deleted_by'],
+          referencedTableName: 'user',
+          referencedColumnNames: ['id'],
+          onDelete: 'SET NULL',
+          onUpdate: 'CASCADE',
+        }),
+      <% } %>
+    <% } %>
+    <% fields.forEach(field => { %>
+      <% if (field.relation) { %>
+        <% if (['OneToOne', 'ManyToOne'].includes(field.relation.type)) { %>
+          new TableForeignKey({
+            columnNames: ['<%= field.relation.joinColumn?.name ||  snakeCase(field.name)+'_id' %>'],
+            referencedTableName: '<%= field.relation.target.toLowerCase() %>',
+            referencedColumnNames: ['<%= field.relation.joinColumn?.referencedColumnName ||  'id' %>'],
+            onUpdate: '<%- field.relation.onUpdate ?? 'CASCADE'%>',
+            onDelete: '<%- field.relation.onDelete ?? 'SET NULL'%>',
+          }),
+        <% } %>
+      <% } %>
+    <% }) %>
+    ]);
+
+    // Join tables
+    <% fields.forEach(field => { %>
+      <% if (field.relation && field.relation.type === 'ManyToMany') { %>
+        await queryRunner.createTable(
+          new Table({
+            name:'<%= field.relation.joinTable?.name || name + "_" + snakeCase(field.name) + "_map" %>',
+            <% const primaryTablefields=[]; const primaryDBTablefields=[]; %>
+            columns: [
+            <% if (field.relation.joinTable?.joinColumn) { %>
+                {
+                  <% primaryTablefields.push(field.relation.joinTable.joinColumn.name); 
+                     primaryDBTablefields.push(field.relation.joinTable.joinColumn.name);
+                  %>
+                  name: '<%=field.relation.joinTable.joinColumn.name %>',
+                  type: 'bigint',
+                  isNullable: false,
+                  isPrimary: true,
+                },
+              <% } else { %>
+                <% if (primaryFields && primaryFields.length === 1) { %>
+                  {
+                    <% const name2 = `${primaryFields[0].dbName || snakeCase(primaryFields[0].name)}`;
+                      primaryTablefields.push(name2); 
+                      primaryDBTablefields.push(`${dbTableName}_${name2}`);
+                    %>
+
+                    name: '<%= dbTableName %>_<%= primaryFields[0].dbName || snakeCase(primaryFields[0].name) %>',
+                    <% if (primaryFields[0].dtype === "uuid") { %>
+                      type: 'char',
+                      length: '36',
+                    <% } else { %>
+                      type: '<%= primaryFields[0].dtype || "bigint" %>',
+                    <% } %>
+                    isNullable: false,
+                    isPrimary: true,
+                  },
+                <% } else if (primaryFields && primaryFields.length > 1) { %>
+                  <% primaryFields.forEach((field, index) => { %>
+                    {
+                      <% const name2 = `${field.dbName || snakeCase(field.name)}`;
+                         primaryTablefields.push(`${field.dbName || snakeCase(field.name)}`); 
+                         primaryDBTablefields.push(`${dbTableName}_${name2}`);
+                      %>
+                      name: '<%= dbTableName %>_<%= field.dbName || snakeCase(field.name) %>',
+                      <% if (field.dtype === "uuid") { %>
+                        type: 'char',
+                        length: '36',
+                      <% } else { %>
+                        type: '<%= field.dtype || "bigint" %>',
+                      <% } %> 
+                      isNullable: false,isPrimary: true<%= index < primaryFields.length - 1 ? ',' : '' %>
+                    },
+                  <% }); %>
+                <% } else { %>
+                  {
+                    name: '<%= dbTableName %>_id',
+                    type: 'bigint',
+                    isPrimary: true,
+                    isNullable: false,
+                  },
+                <% } %>
+              <% } %>
+
+                {
+                  name: '<%= field.relation.joinTable?.inverseJoinColumn?.name || field.relation.target.toLowerCase() + '_id'%>',
+                  type: 'bigint',
+                  isPrimary: true,
+                  isNullable: false,
+                },
+
+
+
+   
+            ],
+            foreignKeys: [
+              {
+                columnNames: [
+                  <% primaryDBTablefields.forEach((name, index) => { %>'<%= name %>'<%= index < primaryDBTablefields.length - 1 ? ',' : '' %>
+                  <% }) %>
+
+                ],
+                referencedTableName: '<%= dbTableName %>',
+                referencedColumnNames: [
+                <% primaryTablefields.forEach((name, index) => { %>'<%= name %>'<%= index < primaryTablefields.length - 1 ? ',' : '' %>
+                <% }) %>
+                ],
+                onDelete: '<%- field.relation.onDelete ?? 'CASCADE'%>',
+              },
+              {
+                columnNames: ['<%= field.relation.joinTable?.inverseJoinColumn?.name || field.relation.target.toLowerCase() + '_id'%>'],
+                referencedTableName: '<%=field.relation.target.toLowerCase()%>',
+                referencedColumnNames: ['<%=field.relation.joinTable?.inverseJoinColumn?.referencedColumnName||'id'%>'],             
+                onDelete: '<%- field.relation.onDelete ?? 'CASCADE'%>',
+              },
+            ],
+          })
+        );
+  
+      <% } %>
+      // manage one to many relations
+      <% if (field.relation && field.relation.type === 'OneToMany') { %>
+        <% const primaryTablefields=[]; const primaryDBTablefields=[]; %>
+        await queryRunner.addColumns('<%=field.relation.target.toLowerCase()%>', 
+        [
+         <% if (field.relation.joinTable?.joinColumn) { %>
+          new TableColumn(  {
+              <% primaryTablefields.push(field.relation.joinTable.joinColumn.name); 
+                 primaryDBTablefields.push(field.relation.joinTable.joinColumn.name);
+              %>
+              name: '<%=field.relation.joinTable.joinColumn.name %>',
+              type: 'bigint',
+              isNullable: false,
+             
+            }),
+          <% } else { %>
+            <% if (primaryFields && primaryFields.length === 1) { %>
+              new TableColumn(  {
+                <% const name2 = `${primaryFields[0].dbName || snakeCase(primaryFields[0].name)}`;
+                  primaryTablefields.push(name2); 
+                  primaryDBTablefields.push(`${dbTableName}_${name2}`);
+                %>
+
+                name: '<%= dbTableName %>_<%= primaryFields[0].dbName || snakeCase(primaryFields[0].name) %>',
+                <% if (primaryFields[0].dtype === "uuid") { %>
+                  type: 'char',
+                  length: '36',
+                <% } else { %>
+                  type: '<%= primaryFields[0].dtype || "bigint" %>',
+                <% } %>
+                isNullable: false,
+               
+              }),
+            <% } else if (primaryFields && primaryFields.length > 1) { %>
+              <% primaryFields.forEach((field, index) => { %>
+                new TableColumn(  {
+                  <% const name2 = `${field.dbName || snakeCase(field.name)}`;
+                     primaryTablefields.push(`${field.dbName || snakeCase(field.name)}`); 
+                     primaryDBTablefields.push(`${dbTableName}_${name2}`);
+                  %>
+                  name: '<%= dbTableName %>_<%= field.dbName || snakeCase(field.name) %>',
+                  <% if (field.dtype === "uuid") { %>
+                    type: 'char',
+                    length: '36',
+                  <% } else { %>
+                    type: '<%= field.dtype || "bigint" %>',
+                  <% } %> 
+                  isNullable: false<%= index < primaryFields.length - 1 ? ',' : '' %>
+                }),
+              <% }); %>
+            <% } else { %>
+              new TableColumn(  {
+                name: '<%= dbTableName %>_id',
+                type: 'bigint',
+                isNullable: false,
+              }),
+            <% } %>
+          <% } %>
+            
+
+        ]);
+        
+        await queryRunner.createForeignKey('<%=field.relation.target.toLowerCase()%>', new TableForeignKey({
+          columnNames: [<% primaryDBTablefields.forEach((name, index) => { %>'<%= name %>'<%= index < primaryDBTablefields.length - 1 ? ',' : '' %>
+          <% }) %>],
+          referencedTableName: '<%= dbTableName %>',
+          referencedColumnNames: [<% primaryTablefields.forEach((name, index) => { %>'<%= name %>'<%= index < primaryTablefields.length - 1 ? ',' : '' %>
+          <% }) %>],
+          onUpdate: '<%- field.relation.onUpdate ?? 'CASCADE'%>',
+          onDelete: '<%- field.relation.onDelete ?? 'SET NULL'%>',
+        }));
+        
+      <% } %>
+    <% }) %>
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.dropTable("<%= tableName %>");
+    await queryRunner.dropTable("<%= dbTableName %>");
   }
 }

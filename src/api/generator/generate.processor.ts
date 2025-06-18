@@ -18,6 +18,7 @@ export class GenerateProcessor {
       const className = name.charAt(0).toUpperCase() + name.slice(1);
       const camelName = className.charAt(0).toLowerCase() + className.slice(1);
       const fileName = name.toLowerCase();
+      const dbTableName = name.toLowerCase();
       const fileNamePlural = pluralize(fileName);
       const entityName = className;
       const tableName = className;
@@ -43,6 +44,7 @@ export class GenerateProcessor {
         primaryFields,
         className,
         tableName,
+        dbTableName,
         typeMap,
         creationConfig,
         timestamp,
@@ -307,7 +309,9 @@ export class GenerateProcessor {
               options.push(`nullable: ${field.relation.nullable}`);
 
             propertyBlock = `@ManyToOne(() => ${name}, (${fileName}) => ${fileName}.${field.name} ${options.length ? `, {\n  ${options.join(',\n  ')}\n}` : ''})
-              @JoinColumn( ${joinColumnBlock} ) ${inverseName}: ${name};`;
+              @JoinColumn( ${joinColumnBlock} ) ${inverseName}: ${name};
+              @Column({ name: '${field.relation.joinColumn?.name || snakeCase(field.inverseName) + '_id'}', type: 'bigint', nullable: true })
+              ${inverseName}Id?: string;`;
           } else if (field.relation.type == 'ManyToOne') {
             propertyBlock = `
             @OneToMany(() => ${name}, (${fileName}) => ${fileName}.${field.name})
