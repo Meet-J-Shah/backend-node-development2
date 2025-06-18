@@ -8,6 +8,7 @@ import {
   ValidateNested,
   IsObject,
   IsIn,
+  ValidateIf,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import {
@@ -128,8 +129,11 @@ class FieldDto {
   enum?: string[];
 
   @IsOptional()
+  @ValidateIf((o) => typeof o.default === 'number')
   @IsNumber()
-  default?: number;
+  @ValidateIf((o) => typeof o.default === 'string')
+  @IsString()
+  default?: number | string;
 
   @IsOptional()
   @ValidateNested()

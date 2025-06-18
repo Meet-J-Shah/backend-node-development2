@@ -15,7 +15,6 @@ import {
   DeleteDateColumn
 } from 'typeorm';
 import { Exclude } from 'class-transformer';
-import { snakeCase } from 'lodash';
 import {User} from "../../user/entities/user.entity";
 
 
@@ -36,21 +35,29 @@ export class <%= name %> {
 
   <% if (primaryFields) {%>
     <% if (primaryFields.length === 1) {%>
-      @PrimaryGeneratedColumn({ type: 
-          <% if (primaryFields[0].dtype) { %>'<%= primaryFields[0].dtype %>'
-          <% } else{ %>'bigint' <% } %>,
-          <% if (primaryFields[0].dbName) { %>name: '<%= primaryFields[0].dbName %>',
-          <% } else{ %>name: snakeCase('<%= primaryFields[0].name %>') <% } %>
-        })
-      <%= primaryFields[0].name %>: <% if (primaryFields[0].type) { %><%= primaryFields[0].type %>
+  
+      <% if (primaryFields[0].dtype === 'uuid') { %>
+        @PrimaryColumn({ type: 'char', length: '36', name: '<%= primaryFields[0].dbName || snakeCase(primaryFields[0].name) %>' ,default: () => 'UUID()' })
+      <% } else { %>
+          @PrimaryGeneratedColumn({ type: 
+            <% if (primaryFields[0].dtype) { %>'<%= primaryFields[0].dtype %>'
+            <% } else{ %>'bigint' <% } %>,
+            <% if (primaryFields[0].dbName) { %>name: '<%= primaryFields[0].dbName %>',
+            <% } else{ %>name: '<%= snakeCase(primaryFields[0].name)%>' <% } %>
+          })
+      <% } %>
+        <%= primaryFields[0].name %>: <% if (primaryFields[0].type) { %><%= primaryFields[0].type %>
         <% } else{ %>string <% } %>;
+     
     <% } else { %>
           <% primaryFields.forEach(primaryField => { %>
             @PrimaryColumn({ type: 
-              <% if (primaryField.dtype) { %>'<%= primaryField.dtype %>'
-              <% } else{ %>'bigint' <% } %>,
+              <% if (primaryField.dtype === 'uuid') { %>
+                'char',
+                length: '36' 
+              <% } else{ %>'<%= primaryFields[0].dtype || "bigint" %>' <% } %>,
               <% if (primaryField.dbName) { %>name: '<%= primaryField.dbName %>',
-              <% } else{ %>name: snakeCase('<%= primaryField.name %>') <% } %>
+              <% } else{ %>name: '<%=snakeCase( primaryField.name )%>' <% } %>
             })
             <%= primaryField.name %> : <% if (primaryField.type) { %><%= primaryField.type %>
               <% } else{ %>string <% } %>;
@@ -92,8 +99,8 @@ export class <%= name %> {
     @Column({
       <% if (field.type) { %>type: '<%= field.dtype %>',<% } %>
       <% if (field.enum) { %>enum: <%- JSON.stringify(field.enum) %>,<% } %>
-      <% if (field.dbName) { %>name: '<%= field.dbName %>',<% } else{ %>name: snakeCase('<%= field.name %>') <% } %>,
-      <% if (field.length) { %>length: <%= field.length %>,<% } %>
+      <% if (field.dbName) { %>name: '<%= field.dbName %>',<% } else{ %>name: '<%= snakeCase(field.name) %>' <% } %>,
+      <% if (field.length || field.type==='varchar') { %>length: <%= field.length || 255 %>,<% } %>
       <% if (field.nullable !== undefined) { %>nullable: <%= field.nullable %>,<% } %>
       <% if (field.unique) { %>unique: true,<% } %>
       <% if (field.default !== undefined) { %>default: <%- JSON.stringify(field.default) %>,<% } %>

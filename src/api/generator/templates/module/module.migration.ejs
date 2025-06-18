@@ -9,7 +9,13 @@ export class Create<%= name %>Table<%= timestamp %> implements MigrationInterfac
       <% if (primaryFields && primaryFields.length === 1) { %>
         {
           name: '<%= primaryFields[0].dbName || snakeCase(primaryFields[0].name) %>',
-          type: '<%= primaryFields[0].dtype || "bigint" %>',
+          <% if (primaryFields[0].dtype === "uuid") { %>
+            type: 'char',
+            length: '36',
+          <% } else { %>
+            type: '<%= primaryFields[0].dtype || "bigint" %>',
+          <% } %>
+          
           isPrimary: true,
           isGenerated: true,
           generationStrategy: '<%= primaryFields[0].dtype === "uuid" ? "uuid" : "increment" %>',
@@ -18,7 +24,12 @@ export class Create<%= name %>Table<%= timestamp %> implements MigrationInterfac
         <% primaryFields.forEach((field, index) => { %>
           {
             name: '<%= field.dbName || snakeCase(field.name) %>',
-            type: '<%= field.dtype || "bigint" %>',
+            <% if (field.dtype === "uuid") { %>
+              type: 'char',
+              length: '36',
+            <% } else { %>
+              type: '<%= field.dtype || "bigint" %>',
+            <% } %> 
             isPrimary: true<%= index < primaryFields.length - 1 ? ',' : '' %>
           },
         <% }); %>
@@ -34,13 +45,24 @@ export class Create<%= name %>Table<%= timestamp %> implements MigrationInterfac
 <% fields.forEach(field => { %>
   <% if (!field.relation) { %>
         {
-          name: "<%= field.name %>",
+          <% if (field.dbName) { %>name: '<%= field.dbName %>',<% } else{ %>name: '<%= snakeCase(field.name) %>' <% } %>,
           <% if (field.dtype === 'enum') { %>
             type: "enum('<%- field.enum.join("','") %>')",
+            <% if(field.default) { %>
+              default: "'<%=field.default %>'",  
+            <% } %>
+          <% } else if (field.dtype === 'uuid') { %>
+            type: "char",
+            length: "36",
           <% } else { %>
           type: "<%= field.dtype ||  typeMap[field.type] || 'varchar' %>",
+          <% if(field.default) { %>
+            default: <%- JSON.stringify(field.default) %>,  
+          <% } %>
           <% }  %>
-          <%= field.required === false ? "isNullable: true," : "" %>
+          <% if (field.length || field.dtype==='varchar' || !field.dtype) { %>length: '<%= field.length || 255 %>',<% } %>
+          <% if (field.nullable !== undefined) { %>isNullable: <%= field.nullable %>,<% } %>
+          <% if (field.unique) { %>isUnique: true,<% } %>
         },
   <% } else { %>
         {
