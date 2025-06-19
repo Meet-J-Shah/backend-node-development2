@@ -312,10 +312,12 @@ export class GenerateProcessor {
               options.push(`nullable: ${field.relation.nullable}`);
             if (primaryFields && primaryFields.length > 1) {
               const referencedColumns: string[] = [];
+              const referencedColumns2: string[] = [];
               const columnBlock = primaryFields
                 .map((primaryField) => {
-                  referencedColumns.push(
-                    primaryField.dbName || snakeCase(primaryField.name),
+                  referencedColumns.push(primaryField.name);
+                  referencedColumns2.push(
+                    `${dbTableName}_${primaryField.dbName || snakeCase(primaryField.name)}`,
                   );
                   const columnName = `${dbTableName}_${primaryField.dbName || snakeCase(primaryField.name)}`;
                   let typeBlock;
@@ -333,12 +335,15 @@ export class GenerateProcessor {
             ${aliasName}?: ${type};`;
                 })
                 .join('\n\n'); // Join multiple column blocks
-              const joinColumnsBlock = referencedColumns
-                .map((refCol) => {
-                  const colName = `${dbTableName}_${refCol}`;
-                  return `{ name: '${colName}', referencedColumnName: '${refCol}' }`;
-                })
-                .join(',\n  ');
+              let joinColumnsBlock = '';
+
+              referencedColumns.forEach((refCol, index) => {
+                joinColumnsBlock += `{ name: '${referencedColumns2[index]}', referencedColumnName: '${refCol}' }`;
+                if (index < referencedColumns.length - 1) {
+                  joinColumnsBlock += ',\n  ';
+                }
+              });
+
               propertyBlock = `@ManyToOne(() => ${name}, (${fileName}) => ${fileName}.${field.name} ${options.length ? `, {\n  ${options.join(',\n  ')}\n}` : ''})
               @JoinColumn([ ${joinColumnsBlock} ]) ${inverseName}: ${name}; ${columnBlock}`;
             } else {
@@ -353,7 +358,7 @@ export class GenerateProcessor {
               if (
                 field.relation.joinColumn?.referencedColumnName === undefined ||
                 field.relation.joinColumn?.referencedColumnName ===
-                  (primaryFields[0].dbName || snakeCase(primaryFields[0].name))
+                  primaryFields[0].name
               ) {
               } else {
                 let nameBlock = ``;
@@ -361,7 +366,7 @@ export class GenerateProcessor {
                   nameBlock = `name: '${field.relation.joinColumn?.name}',`;
                 }
                 joinColumnBlock = ` { ${nameBlock}
-                    referencedColumnName: '${primaryFields[0]?.dbName || snakeCase(primaryFields[0]?.name || 'id')}',
+                    referencedColumnName: '${primaryFields[0]?.name || 'id'}',
                   }`;
               }
               propertyBlock = `@ManyToOne(() => ${name}, (${fileName}) => ${fileName}.${field.name} ${options.length ? `, {\n  ${options.join(',\n  ')}\n}` : ''})
