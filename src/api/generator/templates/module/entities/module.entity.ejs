@@ -2,6 +2,7 @@
 import {
   Entity,
   PrimaryGeneratedColumn,
+  PrimaryColumn,
   Column,
   OneToMany,
   ManyToOne,
@@ -31,8 +32,41 @@ import { <%= field.relation.target %> } from "../../<%= relationFile %>/entities
 
 @Entity()
 export class <%= name %> {
-  @PrimaryGeneratedColumn()
-  id: string;
+
+  <% if (primaryFields) {%>
+    <% if (primaryFields.length === 1) {%>
+  
+      <% if (primaryFields[0].dtype === 'uuid') { %>
+        @PrimaryColumn({ type: 'char', length: '36', name: '<%= primaryFields[0].dbName || snakeCase(primaryFields[0].name) %>' ,default: () => 'UUID()' })
+      <% } else { %>
+          @PrimaryGeneratedColumn({ type: 
+            <% if (primaryFields[0].dtype) { %>'<%= primaryFields[0].dtype %>'
+            <% } else{ %>'bigint' <% } %>,
+            <% if (primaryFields[0].dbName) { %>name: '<%= primaryFields[0].dbName %>',
+            <% } else{ %>name: '<%= snakeCase(primaryFields[0].name)%>' <% } %>
+          })
+      <% } %>
+        <%= primaryFields[0].name %>: <% if (primaryFields[0].type) { %><%= primaryFields[0].type %>
+        <% } else{ %>string <% } %>;
+     
+    <% } else { %>
+          <% primaryFields.forEach(primaryField => { %>
+            @PrimaryColumn({ type: 
+              <% if (primaryField.dtype === 'uuid') { %>
+                'char',
+                length: '36' 
+              <% } else{ %>'<%= primaryFields[0].dtype || "bigint" %>' <% } %>,
+              <% if (primaryField.dbName) { %>name: '<%= primaryField.dbName %>',
+              <% } else{ %>name: '<%=snakeCase( primaryField.name )%>' <% } %>
+            })
+            <%= primaryField.name %> : <% if (primaryField.type) { %><%= primaryField.type %>
+              <% } else{ %>string <% } %>;
+          <% }) %>
+    <% } %>
+  <% } else { %>
+      @PrimaryGeneratedColumn({ type: 'bigint', name: 'id' })
+      id: string;
+  <% } %>
 <% fields.forEach(field => { %>
   <% if (field.relation) {%>
     <% let targetLower =field.relation.target.toLowerCase(); %>
@@ -40,23 +74,48 @@ export class <%= name %> {
     @<%= field.relation.type %>(
       () => <%= field.relation.target %><% if (field.relation.inverseSide) { %>, (<%= targetLower %>) => <%= targetLower %>.<%= field.relation.inverseSide %>
         <% } else if(!field.relation.uniDirectional){ %>
-, (<%= targetLower %>) => <%= targetLower %>.<%= generatedInverse %>
+            , (<%= targetLower %>) => <%= targetLower %>.<%= generatedInverse %>
+        <% } %>
+   ,{
+      cascade: <%= field.relation.cascade ?? false%>, 
+      <% if (['OneToOne', 'ManyToOne'].includes(field.relation.type)) { %> 
+        onUpdate: '<%- field.relation.onUpdate ?? 'CASCADE'%>',
+        onDelete: '<%- field.relation.onDelete ?? 'SET NULL'%>',
+       <% if (field.relation.nullable !== undefined) { %>nullable: <%= field.relation.nullable %>,<% } %>
+      <% } %> 
+    } 
+  )
+    <% if (field.relation.type === 'ManyToMany') { %>  
+
+      @JoinTable(<%- field.relation.joinTable ? JSON.stringify(field.relation.joinTable, null, 2) : '' %>)
+      <%= field.name %>: <%- field.relation.isArray ? `${field.relation.target}[]` : `${field.relation.target}` %>;
+<% } else if (['OneToOne', 'ManyToOne'].includes(field.relation.type)) { %>
+  @JoinColumn(<% if (field.relation.joinColumn) { %><%- JSON.stringify(field.relation.joinColumn, null, 2) %><% } %>)
+  <%= field.name %>: <%- field.relation.isArray ? `${field.relation.target}[]` : `${field.relation.target}` %>;
+
+  @Column({ name:'<%= field.relation.joinColumn?.name ||  snakeCase(field.name)+'_id' %>', type: 'bigint', nullable: true })
+  <%= field.name %>Id?: string;
+<% } else if (field.relation.type === 'OneToMany') { %>
+  <%= field.name %>: <%- field.relation.isArray ? `${field.relation.target}[]` : `${field.relation.target}` %>;
 <% } %>
-    )
-    <% if (field.relation.type === 'OneToOne') { %>@JoinColumn()<% } %>
-    <% if (field.relation.type === 'ManyToMany') { %>@JoinTable()<% } %>
-    <%= field.name %>: <%- field.relation.isArray ? `${field.relation.target}[]` : `${field.relation.target}` %>;
+    
 
   
   <% } else { %>
     @Column({
       <% if (field.type) { %>type: '<%= field.dtype %>',<% } %>
-      <% if (field.length) { %>length: <%= field.length %>,<% } %>
+      <% if (field.enum) { %>enum: <%- JSON.stringify(field.enum) %>,<% } %>
+      <% if (field.dbName) { %>name: '<%= field.dbName %>',<% } else{ %>name: '<%= snakeCase(field.name) %>' <% } %>,
+      <% if (field.length || field.type==='varchar') { %>length: <%= field.length || 255 %>,<% } %>
       <% if (field.nullable !== undefined) { %>nullable: <%= field.nullable %>,<% } %>
       <% if (field.unique) { %>unique: true,<% } %>
-      <% if (field.default !== undefined) { %>default: <%= JSON.stringify(field.default) %>,<% } %>
+      <% if (field.default !== undefined) { %>default: <%- JSON.stringify(field.default) %>,<% } %>
     })
-    <%= field.name %>: <%= field.type || field.dtype %>;
+    <%= field.name %>:
+    <% if (field.enum) { %><%- field.enum.map(v => `'${v}'`).join(' | ') %>
+    <% } else { %>
+      <%= field.type || field.dtype %>;
+     <% } %>
   <% } %>
   
 <% }) %>

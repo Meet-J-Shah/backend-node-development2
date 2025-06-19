@@ -5,7 +5,8 @@ import { Job } from 'bull';
 import * as ejs from 'ejs';
 import { writeFileSync, mkdirSync, existsSync, readFileSync } from 'fs';
 import { join } from 'path';
-
+import * as pluralize from 'pluralize';
+import { snakeCase } from 'lodash';
 @Processor('generate-queue')
 export class GenerateProcessor {
   @Process('generate-crud')
@@ -13,10 +14,11 @@ export class GenerateProcessor {
     console.log('GenerateProcessor received job:', job.id, job.data);
 
     try {
-      const { name, fields, creationConfig } = job.data;
+      const { name, fields, creationConfig, primaryFields } = job.data;
       const className = name.charAt(0).toUpperCase() + name.slice(1);
       const camelName = className.charAt(0).toLowerCase() + className.slice(1);
       const fileName = name.toLowerCase();
+      const dbTableName = name.toLowerCase();
       const fileNamePlural = pluralize(fileName);
       const entityName = className;
       const tableName = className;
@@ -39,8 +41,10 @@ export class GenerateProcessor {
       const templateData = {
         name,
         fields,
+        primaryFields,
         className,
         tableName,
+        dbTableName,
         typeMap,
         creationConfig,
         timestamp,
@@ -58,6 +62,8 @@ export class GenerateProcessor {
         hasRoleRelation: false,
         hasUtilsModule: true,
         hasAuthModule: true,
+        pluralize,
+        snakeCase,
         // ...any more
       };
 
@@ -268,12 +274,11 @@ export class GenerateProcessor {
             'entities',
             `${moduleName}.entity.ts`,
           );
-          console.log(relationModulePath);
+          // console.log(relationModulePath);
           let content = fs.readFileSync(relationModulePath, 'utf-8');
 
           const importLine = `import { ${name} } from '../../${fileName}/entities/${fileName}.entity';\n`;
           if (!content.includes(name)) {
-            console.log('import');
             content = importLine + content;
           }
           let propertyBlock = '';
@@ -286,9 +291,27 @@ export class GenerateProcessor {
             @OneToOne(() => ${name}, (${fileName}) => ${fileName}.${field.name})
           ${inverseName}: ${name};`;
           } else if (field.relation.type == 'OneToMany') {
-            propertyBlock = `
-            @ManyToOne(() => ${name}, (${fileName}) => ${fileName}.${field.name})
-           ${inverseName}: ${name};`;
+            let joinColumnBlock = '';
+            if (
+              field.relation.joinColumn?.name ||
+              field.relation.joinColumn?.referencedColumnName
+            ) {
+              joinColumnBlock = `${JSON.stringify(field.relation.joinColumn, null, 2)}\n`;
+            }
+            const options: string[] = [];
+            if (field.relation.cascade !== undefined)
+              options.push(`cascade: ${field.relation.cascade}`);
+            if (field.relation.onDelete)
+              options.push(`onDelete: '${field.relation.onDelete}'`);
+            if (field.relation.onUpdate)
+              options.push(`onUpdate: '${field.relation.onUpdate}'`);
+            if (field.relation.nullable !== undefined)
+              options.push(`nullable: ${field.relation.nullable}`);
+
+            propertyBlock = `@ManyToOne(() => ${name}, (${fileName}) => ${fileName}.${field.name} ${options.length ? `, {\n  ${options.join(',\n  ')}\n}` : ''})
+              @JoinColumn( ${joinColumnBlock} ) ${inverseName}: ${name};
+              @Column({ name: '${field.relation.joinColumn?.name || snakeCase(field.inverseName) + '_id'}', type: 'bigint', nullable: true })
+              ${inverseName}Id?: string;`;
           } else if (field.relation.type == 'ManyToOne') {
             propertyBlock = `
             @OneToMany(() => ${name}, (${fileName}) => ${fileName}.${field.name})
@@ -352,9 +375,4 @@ export class GenerateProcessor {
       throw err;
     }
   }
-}
-function pluralize(str: string) {
-  if (str.endsWith('y')) return str.slice(0, -1) + 'ies';
-  if (str.endsWith('s')) return str + 'es';
-  return str + 's';
 }
