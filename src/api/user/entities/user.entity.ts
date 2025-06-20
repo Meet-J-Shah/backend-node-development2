@@ -1,3 +1,4 @@
+import { Pizza } from '../../pizza/entities/pizza.entity';
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { Exclude } from 'class-transformer';
 import {
@@ -100,5 +101,13 @@ export class User {
     roles: true,
     createdBy: true,
     updatedBy: true,
+    upiza: true,
+    pizzaLastEditedBy: true,
   } as const;
+
+  @OneToOne(() => Pizza, (pizza) => pizza.owner)
+  upiza: Pizza;
+
+  @OneToOne(() => Pizza, (pizza) => pizza.lastEditedBy)
+  pizzaLastEditedBy: Pizza;
 }

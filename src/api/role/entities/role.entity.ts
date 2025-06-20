@@ -1,3 +1,4 @@
+import { Pizza } from '../../pizza/entities/pizza.entity';
 import { Exclude } from 'class-transformer';
 import {
   Entity,
@@ -129,5 +130,34 @@ export class Role {
   static relationalFields = {
     createdBy: true,
     updatedBy: true,
+    rolePiza: true,
+    pizzaRelatedRoles: true,
   } as const;
+  @ManyToOne(() => Pizza, (pizza) => pizza.assignedRoles, {
+    cascade: true,
+    onDelete: 'SET NULL',
+    onUpdate: 'CASCADE',
+    nullable: true,
+  })
+  @JoinColumn([
+    { name: 'pizza_db_name', referencedColumnName: 'myName' },
+    { name: 'pizza_my_id', referencedColumnName: 'myId' },
+    { name: 'pizza_third_id', referencedColumnName: 'thirdId' },
+    { name: 'pizza_second_id', referencedColumnName: 'secondId' },
+  ])
+  rolePiza: Pizza;
+  @Column({ name: 'pizza_db_name', type: 'bigint', nullable: true })
+  pizzaMyName?: string;
+
+  @Column({ name: 'pizza_my_id', type: 'int', nullable: true })
+  pizzaMyId?: number;
+
+  @Column({ name: 'pizza_third_id', type: 'char', length: 36, nullable: true })
+  pizzaThirdId?: string;
+
+  @Column({ name: 'pizza_second_id', type: 'bigint', nullable: true })
+  pizzaSecondId?: string;
+
+  @ManyToMany(() => Pizza, (pizza) => pizza.relatedRoles)
+  pizzaRelatedRoles: Pizza[];
 }

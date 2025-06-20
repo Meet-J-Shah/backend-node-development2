@@ -1,3 +1,4 @@
+import { Pizza } from '../../pizza/entities/pizza.entity';
 import {
   Entity,
   Column,
@@ -58,5 +59,12 @@ export class Permission {
     slug: true,
     createdAt: true,
     updatedAt: true,
+  } as const;
+
+  @ManyToMany(() => Pizza, (pizza) => pizza.Pizzapermissions)
+  permissionPizza: Pizza[];
+
+  static relationalFields = {
+    permissionPizza: true,
   } as const;
 }
