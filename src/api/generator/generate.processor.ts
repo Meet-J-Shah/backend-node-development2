@@ -1,12 +1,12 @@
 import { Processor, Process } from '@nestjs/bull';
 import * as fs from 'fs';
 import { Job } from 'bull';
-// import { execSync } from 'child_process';
+import { execSync } from 'child_process';
 import * as ejs from 'ejs';
 import { writeFileSync, mkdirSync, existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import * as pluralize from 'pluralize';
-import { snakeCase } from 'lodash';
+import { snakeCase, camelCase, upperFirst } from 'lodash';
 @Processor('generate-queue')
 export class GenerateProcessor {
   @Process('generate-crud')
@@ -299,7 +299,10 @@ export class GenerateProcessor {
               joinColumnBlock = `${JSON.stringify(field.relation.joinColumn, null, 2)}\n`;
             }
             const options: string[] = [];
-            if (field.relation.cascade !== undefined)
+            if (
+              field.relation.cascade !== undefined ||
+              field.relation.type !== 'ManyToOne'
+            )
               options.push(`cascade: ${field.relation.cascade}`);
             if (field.relation.onDelete)
               options.push(`onDelete: '${field.relation.onDelete}'`);
@@ -307,11 +310,70 @@ export class GenerateProcessor {
               options.push(`onUpdate: '${field.relation.onUpdate}'`);
             if (field.relation.nullable !== undefined)
               options.push(`nullable: ${field.relation.nullable}`);
+            if (primaryFields && primaryFields.length > 1) {
+              const referencedColumns: string[] = [];
+              const referencedColumns2: string[] = [];
+              const columnBlock = primaryFields
+                .map((primaryField) => {
+                  referencedColumns.push(primaryField.name);
+                  referencedColumns2.push(
+                    `${dbTableName}_${primaryField.dbName || snakeCase(primaryField.name)}`,
+                  );
+                  const columnName = `${dbTableName}_${primaryField.dbName || snakeCase(primaryField.name)}`;
+                  let typeBlock;
+                  if (primaryField?.dtype === 'uuid') {
+                    const lengthblock2 = ', length: 36';
+                    const type = 'char';
+                    typeBlock = `'${type}' ${lengthblock2} `;
+                  } else {
+                    typeBlock = `'${primaryField?.dtype || 'bigint'}'`;
+                  }
+                  const aliasName = `${dbTableName}${upperFirst(camelCase(primaryField.name))}`;
+                  const type = primaryField.type || 'string';
 
-            propertyBlock = `@ManyToOne(() => ${name}, (${fileName}) => ${fileName}.${field.name} ${options.length ? `, {\n  ${options.join(',\n  ')}\n}` : ''})
+                  return `@Column({ name: '${columnName}', type: ${typeBlock}, nullable: true })
+            ${aliasName}?: ${type};`;
+                })
+                .join('\n\n'); // Join multiple column blocks
+              let joinColumnsBlock = '';
+
+              referencedColumns.forEach((refCol, index) => {
+                joinColumnsBlock += `{ name: '${referencedColumns2[index]}', referencedColumnName: '${refCol}' }`;
+                if (index < referencedColumns.length - 1) {
+                  joinColumnsBlock += ',\n  ';
+                }
+              });
+
+              propertyBlock = `@ManyToOne(() => ${name}, (${fileName}) => ${fileName}.${field.name} ${options.length ? `, {\n  ${options.join(',\n  ')}\n}` : ''})
+              @JoinColumn([ ${joinColumnsBlock} ]) ${inverseName}: ${name}; ${columnBlock}`;
+            } else {
+              let typeBlock;
+              if (primaryFields[0]?.dtype === 'uuid') {
+                const lengthblock2 = ', length: 36';
+                const type = 'char';
+                typeBlock = `'${type}' ${lengthblock2} `;
+              } else {
+                typeBlock = `'${primaryFields[0]?.dtype || 'bigint'}'`;
+              }
+              if (
+                field.relation.joinColumn?.referencedColumnName === undefined ||
+                field.relation.joinColumn?.referencedColumnName ===
+                  primaryFields[0].name
+              ) {
+              } else {
+                let nameBlock = ``;
+                if (field.relation.joinColumn?.name) {
+                  nameBlock = `name: '${field.relation.joinColumn?.name}',`;
+                }
+                joinColumnBlock = ` { ${nameBlock}
+                    referencedColumnName: '${primaryFields[0]?.name || 'id'}',
+                  }`;
+              }
+              propertyBlock = `@ManyToOne(() => ${name}, (${fileName}) => ${fileName}.${field.name} ${options.length ? `, {\n  ${options.join(',\n  ')}\n}` : ''})
               @JoinColumn( ${joinColumnBlock} ) ${inverseName}: ${name};
-              @Column({ name: '${field.relation.joinColumn?.name || snakeCase(field.inverseName) + '_id'}', type: 'bigint', nullable: true })
+              @Column({ name: '${field.relation.joinColumn?.name || snakeCase(field.inverseName) + '_id'}', type: ${typeBlock}, nullable: true })
               ${inverseName}Id?: string;`;
+            }
           } else if (field.relation.type == 'ManyToOne') {
             propertyBlock = `
             @OneToMany(() => ${name}, (${fileName}) => ${fileName}.${field.name})
@@ -355,16 +417,16 @@ export class GenerateProcessor {
           fs.writeFileSync(relationModulePath, content);
         }
       }
-      // execSync('npm run build');
-      // execSync('npm run format');
-      // execSync(
-      //   `npx typeorm-ts-node-commonjs migration:run -d dist/src/data-source.js`,
-      //   {
-      //     stdio: 'inherit',
-      //   },
-      // );
-      // execSync('npm run seed:config');
-      // execSync('npm run seed:run');
+      execSync('npm run build');
+      execSync('npm run format');
+      execSync(
+        `npx typeorm-ts-node-commonjs migration:run -d dist/src/data-source.js`,
+        {
+          stdio: 'inherit',
+        },
+      );
+      execSync('npm run seed:config');
+      execSync('npm run seed:run');
 
       console.log('Job processed successfully:', job.id);
       await job.moveToCompleted('done', true);

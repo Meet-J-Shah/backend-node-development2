@@ -77,16 +77,20 @@ export class <%= name %> {
             , (<%= targetLower %>) => <%= targetLower %>.<%= generatedInverse %>
         <% } %>
    ,{
-      cascade: <%= field.relation.cascade ?? false%>, 
+      
       <% if (['OneToOne', 'ManyToOne'].includes(field.relation.type)) { %> 
+        cascade: <%= field.relation.cascade ?? false%>, 
         onUpdate: '<%- field.relation.onUpdate ?? 'CASCADE'%>',
         onDelete: '<%- field.relation.onDelete ?? 'SET NULL'%>',
        <% if (field.relation.nullable !== undefined) { %>nullable: <%= field.relation.nullable %>,<% } %>
       <% } %> 
+      <% if (field.relation.type === 'ManyToMany') { %>
+      cascade: <%= field.relation.cascade ?? false%>, 
+      <% } %>
     } 
   )
     <% if (field.relation.type === 'ManyToMany') { %>  
-
+     
       @JoinTable(<%- field.relation.joinTable ? JSON.stringify(field.relation.joinTable, null, 2) : '' %>)
       <%= field.name %>: <%- field.relation.isArray ? `${field.relation.target}[]` : `${field.relation.target}` %>;
 <% } else if (['OneToOne', 'ManyToOne'].includes(field.relation.type)) { %>

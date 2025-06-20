@@ -73,7 +73,8 @@ import {
   
     async findOne(id: string): Promise<<%= entityName %>> {
       const data = await this.<%= entityVar %>Repository.findOne({
-        where: { id },
+        where: { <% if (primaryFields) { %><%= primaryFields[0].name %>: id<% } else { %>id: id<% } %>
+      },
         relations: { <% if (hasRoleRelation) { %>roles: true<% } %> },
       });
       if (!data) throw new BadRequestException('<%= entityName %> not found');
@@ -89,7 +90,8 @@ import {
       const rollbackObj: DeleteRollBackDto = isRollback ? { withDeleted: true } : {};
   
       let entity = await this.<%= entityVar %>Repository.findOne({
-        where: { id },
+        where: { <% if (primaryFields) { %><%= primaryFields[0].name  %>: id<% } else { %>id: id<% } %>
+      },
         ...rollbackObj,
       });
       if (!entity) throw new BadRequestException('<%= entityName %> not found');
@@ -101,7 +103,8 @@ import {
   
     async delete(id: string): Promise<boolean> {
       const data = await this.<%= entityVar %>Repository.findOne({
-        where: { id },
+        where: { <% if (primaryFields) { %><%= primaryFields[0].name  %>: id<% } else { %>id: id<% } %>
+      },
         withDeleted: true,
       });
   
