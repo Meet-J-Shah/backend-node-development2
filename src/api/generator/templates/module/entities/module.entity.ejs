@@ -94,7 +94,12 @@ export class <%= name %> {
       @JoinTable(<%- field.relation.joinTable ? JSON.stringify(field.relation.joinTable, null, 2) : '' %>)
       <%= field.name %>: <%- field.relation.isArray ? `${field.relation.target}[]` : `${field.relation.target}` %>;
 <% } else if (['OneToOne', 'ManyToOne'].includes(field.relation.type)) { %>
-  @JoinColumn(<% if (field.relation.joinColumn) { %><%- JSON.stringify(field.relation.joinColumn, null, 2) %><% } %>)
+  @JoinColumn(
+        <% if (field.relation.joinColumn) { %>
+          <%- JSON.stringify(field.relation.joinColumn, null, 2) %>
+        <% } else {%>{ name:'<%= field.relation.joinColumn?.name ||  snakeCase(field.name)+'_id' %>' }
+        <%}%>
+      )
   <%= field.name %>: <%- field.relation.isArray ? `${field.relation.target}[]` : `${field.relation.target}` %>;
 
   @Column({ name:'<%= field.relation.joinColumn?.name ||  snakeCase(field.name)+'_id' %>', type: 'bigint', nullable: true })
