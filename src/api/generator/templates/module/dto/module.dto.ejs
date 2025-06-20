@@ -191,14 +191,17 @@ import {
     <% }) %>
   }
   
-  export class Delete<%= className %>BodyReqDto {
-    @IsBoolean()
-    @IsOptional()
-    hasSoftDeleted?: boolean;
-  }
+  <% if(creationConfig.withSoftDelete) {%>
+    export class Delete<%= className %>BodyReqDto {
+      @IsBoolean()
+      @IsOptional()
+      hasSoftDeleted?: boolean;
+    }
+  <% } %>
+
   
   export class UpdateAndDelete<%= className %>BodyReqDto extends IntersectionType(
     Update<%= className %>BodyReqDto,
-    Delete<%= className %>BodyReqDto,
+    <% if(creationConfig.withSoftDelete) {%>Delete<%= className %>BodyReqDto,<% } %>
   ) {}
   

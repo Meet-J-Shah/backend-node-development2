@@ -28,7 +28,13 @@ import {
   import { ModelService } from '../../utils/model/model.service';
   import { DeleteRollBackDto } from '../../utils/model/model.dto';
   import { CustomLogger } from 'src/utils/logger/logger.service';
+  <% if(creationConfig.operator) {%>
+    import { User } from '../user/entities/user.entity';
+  <% } %>
+
+
   
+
   @Injectable()
   export class <%= entityName %>Service {
     constructor(
@@ -62,11 +68,19 @@ import {
   
     async create(
       createDto:Create<%= entityName %>BodyReqDto,
+      <% if(creationConfig.operator) {%>
+        createdByUser: User,
+      <% } %>
+      
     ): Promise<<%= entityName %>> {
       
   
       const createEntity: <%= entityName %> = this.<%= entityVar %>Repository.create({
         ...createDto,
+        <% if(creationConfig.operator) {%>
+        createdBy: createdByUser,
+        updatedBy: createdByUser,
+        <% } %>
       });
       const saveEntity: <%= entityName %> = await this.<%= entityVar %>Repository.save(createEntity);
       if (!saveEntity) {
@@ -80,6 +94,8 @@ import {
       <% } else { %>
         FindOne<%= className %>ParamReqDto,
       <% } %>): Promise<<%= entityName %>> {
+        const metadata = this.<%= entityVar %>Repository.metadata;
+        const allRelations = metadata.relations.map((rel) => rel.propertyName);
       const data = await this.<%= entityVar %>Repository.findOne({
         where: { 
           <% if (primaryFields) { %>          
@@ -90,7 +106,7 @@ import {
             id: id
           <% } %>
       },
-        relations: { <% if (hasRoleRelation) { %>roles: true<% } %> },
+      relations: allRelations,
       });
       if (!data) throw new BadRequestException('<%= entityName %> not found');
       return data;
@@ -104,10 +120,16 @@ import {
         <% } else { %>
           FindOne<%= className %>ParamReqDto,
         <% } %>
+        <% if(creationConfig.operator) {%>
+          updatedByUser: User,
+        <% } %>
+        <% if (creationConfig.softDelete) { %>
       isRollback = false,
+      <% } %>
     ): Promise<<%= entityName %>> {
+      <% if (creationConfig.softDelete) { %>
       const rollbackObj: DeleteRollBackDto = isRollback ? { withDeleted: true } : {};
-  
+      <% } %>
       let entity = await this.<%= entityVar %>Repository.findOne({
         where: { 
                   <% if (primaryFields) { %>          
@@ -118,11 +140,15 @@ import {
                     id: id
                   <% } %>
               },
+              <% if (creationConfig.softDelete) { %>
         ...rollbackObj,
+        <% } %>
       });
       if (!entity) throw new BadRequestException('<%= entityName %> not found');
   
-      entity = this.modelService.updateModelValue(entity, updateDto);
+      entity = this.modelService.updateModelValue(entity, updateDto, <% if(creationConfig.operator) {%>
+        updatedByUser,
+      <% } %>);
   
       return await this.<%= entityVar %>Repository.save(entity);
     }
@@ -146,8 +172,9 @@ import {
       });
   
       if (!data) throw new BadRequestException('<%= entityName %> not exists');
+      <% if (creationConfig.softDelete) { %>
       if (!data.deletedAt) throw new BadRequestException('Only soft-deleted records can be deleted');
-  
+      <% } %>
       const result = await this.<%= entityVar %>Repository.delete(primaryKeyFields);
       return result.affected ? true : false;
     }
