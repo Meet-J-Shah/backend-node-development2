@@ -16,7 +16,11 @@ import {
   } from '../../utils/global/dto/global.dto';
   import {
     <%= entityName %>FullBodyReqDto,
-
+    <% if(primaryFields?.length>1) { %>
+      PrimaryKeys<%= className %>Dto,
+      <% } else { %>
+        FindOne<%= className %>ParamReqDto,
+      <% } %>
     Create<%= entityName %>BodyReqDto,
     Update<%= entityName %>BodyReqDto,
     UpdateAndDelete<%= className %>BodyReqDto
@@ -71,9 +75,20 @@ import {
       return this.modelService.removeUserBy(saveEntity);
     }
   
-    async findOne(id: string): Promise<<%= entityName %>> {
+    async findOne(primaryKeyFields:<% if(primaryFields?.length>1) { %>
+      PrimaryKeys<%= className %>Dto,
+      <% } else { %>
+        FindOne<%= className %>ParamReqDto,
+      <% } %>): Promise<<%= entityName %>> {
       const data = await this.<%= entityVar %>Repository.findOne({
-        where: { <% if (primaryFields) { %><%= primaryFields[0].name %>: id<% } else { %>id: id<% } %>
+        where: { 
+          <% if (primaryFields) { %>          
+            <% primaryFields.forEach(element => { %>
+            <%= element.name %>:primaryKeyFields.<%= element.name %>,
+          <% }) %>
+          <% } else { %>
+            id: id
+          <% } %>
       },
         relations: { <% if (hasRoleRelation) { %>roles: true<% } %> },
       });
@@ -84,14 +99,25 @@ import {
   
     async update(
       updateDto: UpdateAndDelete<%= className %>BodyReqDto,
-      id: string,
+      primaryKeyFields:<% if(primaryFields?.length>1) { %>
+        PrimaryKeys<%= className %>Dto,
+        <% } else { %>
+          FindOne<%= className %>ParamReqDto,
+        <% } %>
       isRollback = false,
     ): Promise<<%= entityName %>> {
       const rollbackObj: DeleteRollBackDto = isRollback ? { withDeleted: true } : {};
   
       let entity = await this.<%= entityVar %>Repository.findOne({
-        where: { <% if (primaryFields) { %><%= primaryFields[0].name  %>: id<% } else { %>id: id<% } %>
-      },
+        where: { 
+                  <% if (primaryFields) { %>          
+                    <% primaryFields.forEach(element => { %>
+                    <%= element.name %>:primaryKeyFields.<%= element.name %>,
+                  <% }) %>
+                  <% } else { %>
+                    id: id
+                  <% } %>
+              },
         ...rollbackObj,
       });
       if (!entity) throw new BadRequestException('<%= entityName %> not found');
@@ -101,9 +127,20 @@ import {
       return await this.<%= entityVar %>Repository.save(entity);
     }
   
-    async delete(id: string): Promise<boolean> {
+    async delete(primaryKeyFields:<% if(primaryFields?.length>1) { %>
+      PrimaryKeys<%= className %>Dto,
+      <% } else { %>
+        FindOne<%= className %>ParamReqDto,
+      <% } %>): Promise<boolean> {
       const data = await this.<%= entityVar %>Repository.findOne({
-        where: { <% if (primaryFields) { %><%= primaryFields[0].name  %>: id<% } else { %>id: id<% } %>
+        where: { 
+          <% if (primaryFields) { %>          
+            <% primaryFields.forEach(element => { %>
+            <%= element.name %>:primaryKeyFields.<%= element.name %>,
+          <% }) %>
+          <% } else { %>
+            id: id
+          <% } %>
       },
         withDeleted: true,
       });
@@ -111,7 +148,7 @@ import {
       if (!data) throw new BadRequestException('<%= entityName %> not exists');
       if (!data.deletedAt) throw new BadRequestException('Only soft-deleted records can be deleted');
   
-      const result = await this.<%= entityVar %>Repository.delete(id);
+      const result = await this.<%= entityVar %>Repository.delete(primaryKeyFields);
       return result.affected ? true : false;
     }
   }

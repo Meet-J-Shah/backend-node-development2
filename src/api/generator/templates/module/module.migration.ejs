@@ -276,14 +276,22 @@ export class Create<%= name %>Table<%= timestamp %> implements MigrationInterfac
             foreignKeys: [
               {
                 columnNames: [
-                  <% primaryDBTablefields.forEach((name, index) => { %>'<%= name %>'<%= index < primaryDBTablefields.length - 1 ? ',' : '' %>
-                  <% }) %>
+                <% if(primaryDBTablefields.length === 0 ) {%>
+                  '<%= dbTableName+"_id"%>'
+                  <% } else { %>
+                    <% primaryDBTablefields.forEach((name, index) => { %>'<%= name %>'<%= index < primaryDBTablefields.length - 1 ? ',' : '' %><% }) %>
+                  <% } %>
+                  
 
                 ],
                 referencedTableName: '<%= dbTableName %>',
                 referencedColumnNames: [
-                <% primaryTablefields.forEach((name, index) => { %>'<%= name %>'<%= index < primaryTablefields.length - 1 ? ',' : '' %>
-                <% }) %>
+                <% if(primaryDBTablefields.length === 0 ) {%>
+                  'id'
+                  <% } else { %>
+                    <% primaryTablefields.forEach((name, index) => { %>'<%= name %>'<%= index < primaryTablefields.length - 1 ? ',' : '' %> <% }) %>
+                  <% } %>
+                
                 ],
                 onDelete: '<%- field.relation.onDelete ?? 'CASCADE'%>',
               },
@@ -381,11 +389,23 @@ export class Create<%= name %>Table<%= timestamp %> implements MigrationInterfac
         ]);
         
         await queryRunner.createForeignKey('<%=field.relation.target.toLowerCase()%>', new TableForeignKey({
-          columnNames: [<% primaryDBTablefields.forEach((name, index) => { %>'<%= name %>'<%= index < primaryDBTablefields.length - 1 ? ',' : '' %>
-          <% }) %>],
+          columnNames: [
+            <% if(primaryDBTablefields.length === 0 ) {%>
+              '<%= dbTableName+"_id"%>'
+              <% } else { %>
+                <% primaryDBTablefields.forEach((name, index) => { %>'<%= name %>'<%= index < primaryDBTablefields.length - 1 ? ',' : '' %>
+                <% }) %>
+            <% } %>
+          ],
           referencedTableName: '<%= dbTableName %>',
-          referencedColumnNames: [<% primaryTablefields.forEach((name, index) => { %>'<%= name %>'<%= index < primaryTablefields.length - 1 ? ',' : '' %>
-          <% }) %>],
+          referencedColumnNames: [
+            <% if(primaryDBTablefields.length === 0 ) {%>
+              'id'
+            <% } else { %>
+              <% primaryTablefields.forEach((name, index) => { %>'<%= name %>'<%= index < primaryTablefields.length - 1 ? ',' : '' %>
+              <% }) %>
+            <% } %>
+          ],
           onUpdate: '<%- field.relation.onUpdate ?? 'CASCADE'%>',
           onDelete: '<%- field.relation.onDelete ?? 'SET NULL'%>',
         }));
