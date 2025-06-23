@@ -8,8 +8,10 @@ import {
     IsArray,
     IsInt,
     IsIn,
+    Matches ,
+    IsUUID ,
   } from 'class-validator';
-  import { Transform } from 'class-transformer'; 
+  import { Transform, Type } from 'class-transformer'; 
   import { IntersectionType } from '@nestjs/mapped-types';
   export class <%= className %>FullBodyReqDto {
     @IsString()
@@ -44,13 +46,50 @@ import {
     limit: number;
   }
   
-  export class FindOne<%= className %>ParamReqDto {
-    @IsString()
-    @IsNotEmpty()
-    id: string;
-  }
   
-  export class Create<%= className %>BodyReqDto {
+  <%  if (primaryFields && primaryFields.length > 1) { %>
+    export class PrimaryKeys<%= className %>Dto {
+      <% primaryFields.forEach(field => { %>
+        <% if (field.dtype === 'uuid') { %>
+          @IsUUID()
+          <% } else if ( field.dtype === 'int') { %>
+            @Type(() => Number)
+            @IsInt()
+          <% } else { %>
+            @IsString()
+            @Matches(/^\d+$/, { message: 'ID must be a string of digits' })
+          <% } %>
+          @IsNotEmpty()
+          <%= field.name %>: <%= field.tsType || field.type || 'string' %>;
+      <% }) %>
+    }
+  <% } else { %>
+    export class FindOne<%= className %>ParamReqDto {
+      <% if (primaryFields && primaryFields.length === 1) { %>
+        <% if (primaryFields[0].dtype === 'uuid') { %>
+          @IsUUID()
+        <% } else if (primaryFields[0].dtype === 'int') { %>
+          @Type(() => Number)
+          @IsInt()
+        <% } else { %>
+          @IsString()
+            @Matches(/^\d+$/, { message: 'ID must be a string of digits' })
+        <% } %>
+        @IsNotEmpty()
+        <%= primaryFields[0].name %>: <%= primaryFields[0].tsType || primaryFields[0].type || 'string' %>;
+        <% } else { %>
+          @IsString()
+          @Matches(/^\d+$/, { message: 'ID must be a string of digits' })
+          @IsNotEmpty()
+          id: string;
+        <% } %>
+    }
+  <% } %>
+  export class Create<%= className %>BodyReqDto 
+    <%  if (primaryFields && primaryFields.length > 1) { %> 
+      extends  PrimaryKeys<%= className %>Dto
+    <% } %>
+  {
     <% fields.forEach(field => { %>
       <% if (field.apiProperty) { %>
       @ApiProperty()
@@ -105,8 +144,7 @@ import {
         <% } %>
       <% } %>
     <% }) %>
-    
-    
+      
   }
   
   export class Update<%= className %>BodyReqDto {
@@ -153,14 +191,17 @@ import {
     <% }) %>
   }
   
-  export class Delete<%= className %>BodyReqDto {
-    @IsBoolean()
-    @IsOptional()
-    hasSoftDeleted?: boolean;
-  }
+  <% if(creationConfig.withSoftDelete) {%>
+    export class Delete<%= className %>BodyReqDto {
+      @IsBoolean()
+      @IsOptional()
+      hasSoftDeleted?: boolean;
+    }
+  <% } %>
+
   
   export class UpdateAndDelete<%= className %>BodyReqDto extends IntersectionType(
     Update<%= className %>BodyReqDto,
-    Delete<%= className %>BodyReqDto,
+    <% if(creationConfig.withSoftDelete) {%>Delete<%= className %>BodyReqDto,<% } %>
   ) {}
   

@@ -348,30 +348,31 @@ export class GenerateProcessor {
               @JoinColumn([ ${joinColumnsBlock} ]) ${inverseName}: ${name}; ${columnBlock}`;
             } else {
               let typeBlock;
-              if (primaryFields[0]?.dtype === 'uuid') {
+              if (primaryFields?.[0].dtype === 'uuid') {
                 const lengthblock2 = ', length: 36';
                 const type = 'char';
                 typeBlock = `'${type}' ${lengthblock2} `;
               } else {
-                typeBlock = `'${primaryFields[0]?.dtype || 'bigint'}'`;
+                typeBlock = `'${primaryFields?.[0]?.dtype || 'bigint'}'`;
               }
               if (
                 field.relation.joinColumn?.referencedColumnName === undefined ||
                 field.relation.joinColumn?.referencedColumnName ===
-                  primaryFields[0].name
+                  primaryFields?.[0]?.name
               ) {
+                joinColumnBlock = `{ name: '${field.relation.joinColumn?.name || dbTableName + '_id'}', referencedColumnName: '${primaryFields?.[0]?.name || 'id'}' }`;
               } else {
                 let nameBlock = ``;
-                if (field.relation.joinColumn?.name) {
-                  nameBlock = `name: '${field.relation.joinColumn?.name}',`;
-                }
+
+                nameBlock = `name: '${field.relation.joinColumn?.name || dbTableName + '_id'}',`;
+
                 joinColumnBlock = ` { ${nameBlock}
-                    referencedColumnName: '${primaryFields[0]?.name || 'id'}',
+                    referencedColumnName: '${primaryFields?.[0]?.name || 'id'}',
                   }`;
               }
               propertyBlock = `@ManyToOne(() => ${name}, (${fileName}) => ${fileName}.${field.name} ${options.length ? `, {\n  ${options.join(',\n  ')}\n}` : ''})
               @JoinColumn( ${joinColumnBlock} ) ${inverseName}: ${name};
-              @Column({ name: '${field.relation.joinColumn?.name || snakeCase(field.inverseName) + '_id'}', type: ${typeBlock}, nullable: true })
+              @Column({ name: '${field.relation.joinColumn?.name || dbTableName + '_id'}', type: ${typeBlock}, nullable: true })
               ${inverseName}Id?: string;`;
             }
           } else if (field.relation.type == 'ManyToOne') {

@@ -4,8 +4,11 @@ export const <%= camelName %>PermissionsConstant = {
     ADMIN_<%= name.toUpperCase() %>_CREATE: 'admin::<%= name %>::create',
     ADMIN_<%= name.toUpperCase() %>_UPDATE: 'admin::<%= name %>::update',
     ADMIN_<%= name.toUpperCase() %>_PUBLISH: 'admin::<%= name %>::publish',
+    <% if(creationConfig.withSoftDelete) {%>
+    
     ADMIN_<%= name.toUpperCase() %>_SOFT_DELETE: 'admin::<%= name %>::softDelete',
     ADMIN_<%= name.toUpperCase() %>_ROLLBACK: 'admin::<%= name %>::rollback',
+    <% } %>
     ADMIN_<%= name.toUpperCase() %>_HARD_DELETE: 'admin::<%= name %>::hardDelete',
     ADMIN_<%= name.toUpperCase() %>_UPDATE_PERMISSION: 'admin::<%= name %>::updatePermission',
   };
