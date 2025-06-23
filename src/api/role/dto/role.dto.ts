@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import {
   IsNotEmpty,
   MaxLength,
@@ -6,8 +7,10 @@ import {
   IsOptional,
   IsInt,
   IsArray,
+  Matches,
+  IsUUID,
 } from 'class-validator';
-import { Transform } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class RoleFullBodyReqDto {

@@ -266,6 +266,9 @@ export class GenerateProcessor {
           field.relation &&
           (!field.relation.uniDirectional || field.relation.type == 'OneToMany')
         ) {
+          const oneToManyForeignKeys: string[] = [];
+          const oneToManyForeignKeyTypes: string[] = [];
+          const oneToManyForeignKeyDtypes: string[] = [];
           // console.log('mj', field);
           const moduleName = field.relation.target.toLowerCase();
           const relationModulePath = join(
@@ -285,7 +288,7 @@ export class GenerateProcessor {
           const inverseName =
             field.relation.inverseSide ||
             `${fileName}${field.name.charAt(0).toUpperCase() + field.name.slice(1)}`;
-          // 2. Create the property block
+          //  Create the property block
           if (field.relation.type == 'OneToOne') {
             propertyBlock = `
             @OneToOne(() => ${name}, (${fileName}) => ${fileName}.${field.name})
@@ -299,10 +302,7 @@ export class GenerateProcessor {
               joinColumnBlock = `${JSON.stringify(field.relation.joinColumn, null, 2)}\n`;
             }
             const options: string[] = [];
-            if (
-              field.relation.cascade !== undefined ||
-              field.relation.type !== 'ManyToOne'
-            )
+            if (field.relation.cascade !== undefined)
               options.push(`cascade: ${field.relation.cascade}`);
             if (field.relation.onDelete)
               options.push(`onDelete: '${field.relation.onDelete}'`);
@@ -330,9 +330,13 @@ export class GenerateProcessor {
                   }
                   const aliasName = `${dbTableName}${upperFirst(camelCase(primaryField.name))}`;
                   const type = primaryField.type || 'string';
-
+                  oneToManyForeignKeys.push(aliasName);
+                  oneToManyForeignKeyTypes.push(type);
+                  oneToManyForeignKeyDtypes.push(
+                    primaryField.dtype || 'bigint',
+                  );
                   return `@Column({ name: '${columnName}', type: ${typeBlock}, nullable: true })
-            ${aliasName}?: ${type};`;
+                    ${aliasName}?: ${type};`;
                 })
                 .join('\n\n'); // Join multiple column blocks
               let joinColumnsBlock = '';
@@ -348,7 +352,7 @@ export class GenerateProcessor {
               @JoinColumn([ ${joinColumnsBlock} ]) ${inverseName}: ${name}; ${columnBlock}`;
             } else {
               let typeBlock;
-              if (primaryFields?.[0].dtype === 'uuid') {
+              if (primaryFields?.[0]?.dtype === 'uuid') {
                 const lengthblock2 = ', length: 36';
                 const type = 'char';
                 typeBlock = `'${type}' ${lengthblock2} `;
@@ -370,10 +374,16 @@ export class GenerateProcessor {
                     referencedColumnName: '${primaryFields?.[0]?.name || 'id'}',
                   }`;
               }
+              const type = primaryFields?.[0]?.type || 'string';
+              oneToManyForeignKeyTypes.push(type);
+              oneToManyForeignKeys.push(inverseName);
+              oneToManyForeignKeyDtypes.push(
+                primaryFields?.[0]?.dtype || 'bigint',
+              );
               propertyBlock = `@ManyToOne(() => ${name}, (${fileName}) => ${fileName}.${field.name} ${options.length ? `, {\n  ${options.join(',\n  ')}\n}` : ''})
               @JoinColumn( ${joinColumnBlock} ) ${inverseName}: ${name};
               @Column({ name: '${field.relation.joinColumn?.name || dbTableName + '_id'}', type: ${typeBlock}, nullable: true })
-              ${inverseName}Id?: string;`;
+              ${inverseName}Id?: ${type};`;
             }
           } else if (field.relation.type == 'ManyToOne') {
             propertyBlock = `
@@ -415,7 +425,126 @@ export class GenerateProcessor {
             );
           }
 
+          if (field.relation.type === 'OneToMany') {
+            // Match the selectionFields block
+            const match = content.match(
+              /static\s+selectFields\s*=\s*{([\s\S]*?)}\s+as\s+const;/,
+            );
+            if (!match) {
+              const insertIndex = content.lastIndexOf('}');
+
+              const fieldsString = oneToManyForeignKeys
+                .map((name) => `  ${name}: true`)
+                .join(',\n');
+              const newBlock = `\n  static selectFields = {\n${fieldsString}\n  } as const;\n`;
+              content =
+                content.slice(0, insertIndex) +
+                newBlock +
+                content.slice(insertIndex);
+            } else {
+              // Update existing selectFields
+              const fieldsBlock = match[1].trim().replace(/,?\s*$/, '');
+
+              // Build new fields to append (skip duplicates)
+              const existingFields = new Set(
+                fieldsBlock
+                  .split(',')
+                  .map((line) => line.trim().split(':')[0])
+                  .filter(Boolean),
+              );
+
+              const newFields = oneToManyForeignKeys
+                .filter((name) => !existingFields.has(name))
+                .map((name) => `  ${name}: true`);
+
+              const allFields = [fieldsBlock, ...newFields].join(',\n');
+              const newSelectFields = `static selectFields = {\n${allFields}\n} as const;`;
+
+              content = content.replace(
+                /static\s+selectFields\s*=\s*{[\s\S]*?}\s*as\s+const\s*;/,
+                newSelectFields,
+              );
+            }
+          }
+
           fs.writeFileSync(relationModulePath, content);
+
+          // write the updated dtos for one to many relations
+          if (field.relation.type === 'OneToMany') {
+            const dtoPath = join(
+              appPath,
+              moduleName,
+              'dto',
+              `${moduleName}.dto.ts`,
+            );
+            let originalContent = fs.readFileSync(dtoPath, 'utf-8');
+
+            const moduleClass =
+              field.relation.target.charAt(0).toUpperCase() +
+              field.relation.target.slice(1);
+
+            const injectProperties = (classType: 'Create' | 'Update') => {
+              const regex = new RegExp(
+                `export\\s+class\\s+${classType}${moduleClass}BodyReqDto\\b(?:\\s+extends\\s+\\w+)?\\s*{`,
+              );
+              // const match = regex.exec(originalContent);
+              const classMatch = originalContent.match(regex);
+
+              const matchIndex = originalContent.indexOf(classMatch[0]);
+              const openBraceIndex = originalContent.indexOf('{', matchIndex);
+
+              // Now find matching closing brace from openBraceIndex
+              let braceCount = 1;
+              let closeBraceIndex = openBraceIndex + 1;
+
+              while (
+                braceCount > 0 &&
+                closeBraceIndex < originalContent.length
+              ) {
+                const char = originalContent[closeBraceIndex];
+                if (char === '{') braceCount++;
+                else if (char === '}') braceCount--;
+                closeBraceIndex++;
+              }
+              if (!match) return;
+
+              const classStartIndex = match.index;
+              // Find where class ends (first `}` after class start)
+              const classEndIndex = content.indexOf('}', classStartIndex);
+
+              if (classEndIndex === -1) return content;
+              const propertyBlock = oneToManyForeignKeys
+                .map((name, i) => {
+                  const type = oneToManyForeignKeyDtypes[i];
+                  let typeDecorator = '@IsString()';
+                  if (type === 'bigint') {
+                    typeDecorator =
+                      '@IsString()\n  @Matches(/^\\d+$/, { message: "ID must be a string of digits"})';
+                  } else if (type === 'uuid') {
+                    typeDecorator = '@IsUUID()';
+                  } else if (type === 'int') {
+                    typeDecorator = '@Type(() => Number)\n  @IsInt()';
+                  }
+
+                  return `
+                      ${typeDecorator}
+                      ${classType === 'Create' ? '@IsNotEmpty()' : '@IsOptional()'}
+                      ${name}${classType === 'Create' ? '' : '?'}: ${oneToManyForeignKeyTypes[i]};`;
+                })
+                .join('\n');
+
+              originalContent =
+                originalContent.slice(0, closeBraceIndex - 1) +
+                propertyBlock +
+                '\n}' +
+                originalContent.slice(closeBraceIndex);
+            };
+
+            injectProperties('Create');
+            injectProperties('Update');
+
+            fs.writeFileSync(dtoPath, originalContent);
+          }
         }
       }
       execSync('npm run build');
