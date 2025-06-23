@@ -9,6 +9,7 @@ import {
   IsArray,
   Matches,
   IsUUID,
+  ValidateNested,
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
@@ -46,12 +47,17 @@ export class FindManyRoleQueryReq {
   limit: number;
 }
 
-export class FindOneRoleParamReqDto {
+export class PrimaryKeysRoleDto {
   @IsString()
   @IsNotEmpty()
   roleId: string;
 }
 
+export class MultiplePrimaryKeysRoleDto {
+  @ValidateNested({ each: true })
+  @Type(() => PrimaryKeysRoleDto)
+  items: PrimaryKeysRoleDto[];
+}
 export class CreateRoleBodyReqDto {
   @IsString()
   @IsNotEmpty()

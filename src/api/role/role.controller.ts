@@ -25,7 +25,7 @@ import {
 } from '../../utils/global/dto/global.dto';
 import {
   FindManyRoleQueryReq,
-  FindOneRoleParamReqDto,
+  PrimaryKeysRoleDto,
   CreateRoleBodyReqDto,
   UpdateRoleBodyReqDto,
   DeleteRoleBodyReqDto,
@@ -62,7 +62,7 @@ export class RoleController {
   @HttpCode(HttpStatus.OK)
   @PermissionDecorator(rolePermissionsConstant.ADMIN_ROLE_FIND_ONE)
   async findOne(
-    @Param() finOneRoleParamReqDto: FindOneRoleParamReqDto,
+    @Param() finOneRoleParamReqDto: PrimaryKeysRoleDto,
   ): Promise<ControllerResDto<Role>> {
     const { roleId } = finOneRoleParamReqDto;
     const serviceResponse: Role = await this.roleService.findOne({
@@ -99,7 +99,7 @@ export class RoleController {
   @PermissionDecorator(rolePermissionsConstant.ADMIN_ROLE_UPDATE)
   async update(
     @AdminAuthDecorator() adminAuth: any,
-    @Param() updateRoleParamReq: FindOneRoleParamReqDto,
+    @Param() updateRoleParamReq: PrimaryKeysRoleDto,
     @Body() updateRoleBodyReq: UpdateRoleBodyReqDto,
   ): Promise<ControllerResDto<Role>> {
     const { roleId } = updateRoleParamReq;
@@ -122,7 +122,7 @@ export class RoleController {
   @PermissionDecorator(rolePermissionsConstant.ADMIN_ROLE_SOFT_DELETE)
   async softDelete(
     @AdminAuthDecorator() adminAuth: any,
-    @Param() deleteRoleParamReq: FindOneRoleParamReqDto,
+    @Param() deleteRoleParamReq: PrimaryKeysRoleDto,
   ): Promise<ControllerResDto<{ isDeleted: boolean }>> {
     const { roleId } = deleteRoleParamReq;
     const updateRoleBodyReq: DeleteRoleBodyReqDto = {
@@ -147,7 +147,7 @@ export class RoleController {
   @PermissionDecorator(rolePermissionsConstant.ADMIN_ROLE_ROLLBACK)
   async rollback(
     @AdminAuthDecorator() adminAuth: any,
-    @Param() deleteRoleParamReq: FindOneRoleParamReqDto,
+    @Param() deleteRoleParamReq: PrimaryKeysRoleDto,
   ): Promise<ControllerResDto<Role>> {
     const { roleId } = deleteRoleParamReq;
     const updateRoleBodyReq: DeleteRoleBodyReqDto = {
@@ -172,7 +172,7 @@ export class RoleController {
   @HttpCode(HttpStatus.OK)
   @PermissionDecorator(rolePermissionsConstant.ADMIN_ROLE_HARD_DELETE)
   async hardDelete(
-    @Param() deleteRoleParamReq: FindOneRoleParamReqDto,
+    @Param() deleteRoleParamReq: PrimaryKeysRoleDto,
   ): Promise<ControllerResDto<{ isDeleted: boolean }>> {
     const { roleId } = deleteRoleParamReq;
     const isDeleted: boolean = await this.roleService.delete(roleId);
@@ -190,7 +190,7 @@ export class RoleController {
   @PermissionDecorator(rolePermissionsConstant.ADMIN_ROLE_UPDATE_PERMISSION)
   async updatePermission(
     @AdminAuthDecorator() adminAuth: any,
-    @Param() updateRoleParamReq: FindOneRoleParamReqDto,
+    @Param() updateRoleParamReq: PrimaryKeysRoleDto,
     @Body() updateRolePermissionBodyReq: UpdateRolePermissionBodyReqDto,
   ): Promise<ControllerResDto<Role>> {
     const { roleId } = updateRoleParamReq;
