@@ -43,9 +43,10 @@ import {
 <% fields.forEach(field => { %>
   <% if (field.relation && field.relation.type === 'ManyToMany'  && !importedRelations.has(field.relation.target)) { 
        const relationFile = field.relation.target.toLowerCase();
+       const relatedClass= field.relation.target[0].toUpperCase() + field.relation.target.slice(1);
        importedRelations.add(field.relation.target);
   %>
-import { <%= field.relation.target %> } from "../../<%= relationFile %>/entities/<%= relationFile %>.entity";
+import { PrimaryKeys<%= relatedClass %>Dto , MultiplePrimaryKeys<%=relatedClass %>Dto } from "../<%= relationFile %>/dto/<%= relationFile %>.dto";
   <% } %>
 <% }) %>
 
@@ -153,20 +154,25 @@ export class <%= className %>Controller {
   <% fields.forEach(field => { %>
 
     <% if (field.relation?.type==="ManyToMany") {%>
-
-      @Post('add<%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %>')
+      <% const relatedClass= field.relation.target[0].toUpperCase() + field.relation.target.slice(1); %>
+      @Post('addOne<%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %>')
       @HttpCode(HttpStatus.OK)
       @PermissionDecorator(<%= camelName %>PermissionsConstant.ADMIN_<%= constantName %>_CREATE)
-      async add<%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %>(
-        <% if(creationConfig.operator) {%>
-          @AdminAuthDecorator() adminAuth: any,
-        <% } %>
-        @Body() bodyReq: Add<%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %>BodyReqDto,
+      async addOne<%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %>(
+        @Body() bodyReq: PrimaryKeys<%= relatedClass %>Dto,
         @Query() primaryKeyDto:PrimaryKeys<%= className %>Dto,): Promise<ControllerResDto<{ isAdded: boolean }>> {
-        const result = await this.<%= camelName %>Service.add<%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %>(bodyReq, primaryKeyDto<% if(creationConfig.operator) {%>
-          , adminAuth,
-         <% } %>);
-        return this.globalService.setControllerResponse({ isAdded: !!result }, '<%= className %> added successfully.');
+        const result = await this.<%= camelName %>Service.addOne<%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %>(bodyReq, primaryKeyDto,);
+        return this.globalService.setControllerResponse({ isAdded: !!result }, 'addOne <%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %> added successfully.');
+      }
+
+      @Post('addMany<%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %>')
+      @HttpCode(HttpStatus.OK)
+      @PermissionDecorator(<%= camelName %>PermissionsConstant.ADMIN_<%= constantName %>_CREATE)
+      async addMany<%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %>(
+        @Body() bodyReq:  MultiplePrimaryKeys<%=relatedClass %>Dto,
+        @Query() primaryKeyDto:PrimaryKeys<%= className %>Dto,): Promise<ControllerResDto<{ isAdded: boolean }>> {
+        const result = await this.<%= camelName %>Service.addMany<%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %>(bodyReq, primaryKeyDto,);
+        return this.globalService.setControllerResponse({ isAdded: !!result }, 'addMany <%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %> added successfully.');
       }
       <% } %>
    

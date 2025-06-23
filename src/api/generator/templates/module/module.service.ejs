@@ -3,35 +3,43 @@ import {
     Injectable,
     BadRequestException,
     InternalServerErrorException,
+    NotFoundException,
   } from '@nestjs/common';
   import { InjectRepository } from '@nestjs/typeorm';
   import { Repository, In, Not,FindOptionsWhere } from 'typeorm';
   
   import { GlobalService } from '../../utils/global/global.service';
   import { <%= entityName %> } from './entities/<%= entityFileName %>.entity';
-  import {
-    PaginationResDto,
-    ServiceResDto,
-    TypeOrmDeleteResult,
-  } from '../../utils/global/dto/global.dto';
-  import {
-    <%= entityName %>FullBodyReqDto,
-    <% if(primaryFields?.length>1) { %>
-      PrimaryKeys<%= className %>Dto,
-      <% } else { %>
-        FindOne<%= className %>ParamReqDto,
-      <% } %>
-    Create<%= entityName %>BodyReqDto,
-    Update<%= entityName %>BodyReqDto,
-    UpdateAndDelete<%= className %>BodyReqDto
-  } from './dto/<%= entityFileName %>.dto';
-  import { ModelService } from '../../utils/model/model.service';
-  import { DeleteRollBackDto } from '../../utils/model/model.dto';
-  import { CustomLogger } from 'src/utils/logger/logger.service';
-  <% if(creationConfig.operator) {%>
-    import { User } from '../user/entities/user.entity';
+import {
+  PaginationResDto,
+  ServiceResDto,
+  TypeOrmDeleteResult,
+} from '../../utils/global/dto/global.dto';
+import {
+  PrimaryKeys<%= className %>Dto, 
+  Create<%= entityName %>BodyReqDto,
+  UpdateAndDelete<%= className %>BodyReqDto
+} from './dto/<%= entityFileName %>.dto';
+import { ModelService } from '../../utils/model/model.service';
+import { DeleteRollBackDto } from '../../utils/model/model.dto';
+import { CustomLogger } from 'src/utils/logger/logger.service';
+import {plainToInstance} from 'class-transformer';
+<% if(creationConfig.operator) {%>
+  import { User } from '../user/entities/user.entity';
+<% } %>
+<%
+  const importedRelations = new Set();
+%>
+<% fields.forEach(field => { %>
+  <% if (field.relation && field.relation.type === 'ManyToMany'  && !importedRelations.has(field.relation.target)) { 
+       const relationFile = field.relation.target.toLowerCase();
+       const relatedClass= field.relation.target[0].toUpperCase() + field.relation.target.slice(1);
+       importedRelations.add(field.relation.target);
+  %>
+    import { PrimaryKeys<%= relatedClass %>Dto , MultiplePrimaryKeys<%=relatedClass %>Dto } from "../<%= relationFile %>/dto/<%= relationFile %>.dto";
+    import { <%= field.relation.target %> } from "../<%= relationFile %>/entities/<%= relationFile %>.entity";
   <% } %>
-
+<% }) %>
 
   
 
@@ -40,6 +48,10 @@ import {
     constructor(
       @InjectRepository(<%= entityName %>)
       private <%= entityVar %>Repository: Repository<<%= entityName %>>,
+      <% importedRelations.forEach(entity => { %>
+        @InjectRepository(<%= entity %>)
+        private <%= entity.toLowerCase() %>Repository: Repository<<%= entity %>>,
+      <% }) %>
       private globalService: GlobalService,
       private modelService: ModelService,
       private readonly customLogger: CustomLogger,
@@ -178,5 +190,79 @@ import {
       const result = await this.<%= entityVar %>Repository.delete(primaryKeyFields);
       return result.affected ? true : false;
     }
+
+    // logic for entries in join  tables
+    <% fields.forEach(field => { %>
+      
+      <% if (field.relation?.type==="ManyToMany") {%>
+        <% const relatedClass= field.relation.target[0].toUpperCase() + field.relation.target.slice(1); %>
+
+        async addOne<%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %>(bodyReq:PrimaryKeys<%= relatedClass %>Dto, primaryKeyFields:PrimaryKeys<%= className %>Dto,)
+        {
+          const <%= entityVar %> = await this.<%= entityVar %>Repository.findOne({
+            where: {
+              <% if (primaryFields) { %>          
+                <% primaryFields.forEach(element => { %>
+                  <%= element.name %>:primaryKeyFields.<%= element.name %>,
+                <% }) %>
+              <% } else { %>
+                id: id
+              <% } %>
+            },
+            relations: ['<%= field.name %>', ], // Include the relation to modify it
+          });
+
+          if (!<%= entityVar %>) throw new NotFoundException('<%= entityName %> not found');
+          const where = plainToInstance(<%= field.relation.target %>, bodyReq);
+          const <%=field.relation.target.toLowerCase()%>s = await this.<%=field.relation.target.toLowerCase()%>Repository.findOne({ 
+            where: where as FindOptionsWhere<<%= field.relation.target %>>,});
+
+          if ( <%=field.relation.target.toLowerCase()%>s) {
+             // Append or replace related <%=field.relation.target.toLowerCase()%>s
+              <%= entityVar %>.<%= field.name %> = [...<%= entityVar %>.<%= field.name %>, <%=field.relation.target.toLowerCase()%>s];
+            } else {
+              // Handle case when role is not found
+              throw new NotFoundException('<%=field.relation.target%> not found');
+            }
+
+          return await this.<%= entityVar %>Repository.save(<%= entityVar %>); 
+        }
+
+        async addMany<%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %>(bodyReq:MultiplePrimaryKeys<%=relatedClass %>Dto, primaryKeyFields:PrimaryKeys<%= className %>Dto,)
+        {
+          const <%= entityVar %> = await this.<%= entityVar %>Repository.findOne({
+            where: {
+              <% if (primaryFields) { %>          
+                <% primaryFields.forEach(element => { %>
+                  <%= element.name %>:primaryKeyFields.<%= element.name %>,
+                <% }) %>
+              <% } else { %>
+                id: id
+              <% } %>
+            },
+            relations: ['<%= field.name %>', ], // Include the relation to modify it
+          });
+
+          if (!<%= entityVar %>) throw new NotFoundException('<%= entityName %> not found');
+
+          const whereConditions: FindOptionsWhere<Permission>[] = bodyReq.items.map(
+            (item) => plainToInstance(<%= field.relation.target %>, item),);
+          const <%=field.relation.target.toLowerCase()%>s = await this.<%=field.relation.target.toLowerCase()%>Repository.find({ 
+            where: whereConditions,});
+
+          if ( <%=field.relation.target.toLowerCase()%>s) {
+             // Append or replace related <%=field.relation.target.toLowerCase()%>s
+              <%= entityVar %>.<%= field.name %> = [...<%= entityVar %>.<%= field.name %>, ...<%=field.relation.target.toLowerCase()%>s];
+            } else {
+              // Handle case when role is not found
+              throw new NotFoundException('<%=field.relation.target%> not found');
+            }
+
+          return await this.<%= entityVar %>Repository.save(<%= entityVar %>); 
+        }
+      <% } %>
+    <% }) %>
+
+
   }
   

@@ -93,6 +93,7 @@ export class PrimaryKeysUserDto {
 
 export class MultiplePrimaryKeysUserDto {
   @ValidateNested({ each: true })
+  @ArrayMinSize(2, { message: 'At least two permission keys are required' })
   @Type(() => PrimaryKeysUserDto)
   items: PrimaryKeysUserDto[];
 }

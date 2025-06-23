@@ -1,4 +1,10 @@
-import { IsInt, IsNotEmpty, IsString, ValidateNested } from 'class-validator';
+import {
+  ArrayMinSize,
+  IsInt,
+  IsNotEmpty,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 
 export class FindManyPermissionQueryReq {
@@ -14,11 +20,12 @@ export class FindManyPermissionQueryReq {
 export class PrimaryKeysPermissionDto {
   @IsString()
   @IsNotEmpty()
-  permissionId: string;
+  id: string;
 }
 
-export class MultiplePrimaryKeyPermissionDto {
+export class MultiplePrimaryKeysPermissionDto {
   @ValidateNested({ each: true })
+  @ArrayMinSize(2, { message: 'At least two permission keys are required' })
   @Type(() => PrimaryKeysPermissionDto)
   items: PrimaryKeysPermissionDto[];
 }

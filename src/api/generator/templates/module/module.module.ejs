@@ -8,9 +8,26 @@ import { <%= className %>Service } from './<%= fileName %>.service';
 <% if (hasRoleRelation) { %>import { Role } from '../role/entities/role.entity';<% } %>
 import { <%= className %> } from './entities/<%= fileName %>.entity';
 import { CustomLogger } from 'src/utils/logger/logger.service';
+
+
+<%
+  const importedRelations = new Set();
+  importedRelations.add(className);
+%>
+<% fields.forEach(field => { %>
+  <% if (field.relation && field.relation.type === 'ManyToMany'  && !importedRelations.has(field.relation.target)) { 
+       const relationFile = field.relation.target.toLowerCase();
+       importedRelations.add(field.relation.target);
+  %>
+    import { <%= field.relation.target %> } from "../<%= relationFile %>/entities/<%= relationFile %>.entity";
+  <% } %>
+<% }) %>
+
 @Module({
   imports: [
-    TypeOrmModule.forFeature([<% if (hasRoleRelation) { %>Role, <% } %><%= className %>]),
+    TypeOrmModule.forFeature([<% Array.from(importedRelations).forEach((rel, i, arr) => { %>
+    <%= rel %><%= i < arr.length - 1 ? ',' : '' %>
+  <% }) %>]),
     <% if (hasAuthModule) { %>forwardRef(() => AuthModule),<% } %>
     <% if (hasUtilsModule) { %>UtilsModule,<% } %>
   ],
