@@ -376,7 +376,7 @@ export class GenerateProcessor {
               }
               const type = primaryFields?.[0]?.type || 'string';
               oneToManyForeignKeyTypes.push(type);
-              oneToManyForeignKeys.push(inverseName);
+              oneToManyForeignKeys.push(inverseName + 'Id');
               oneToManyForeignKeyDtypes.push(
                 primaryFields?.[0]?.dtype || 'bigint',
               );

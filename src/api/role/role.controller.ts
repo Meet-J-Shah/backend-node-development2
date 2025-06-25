@@ -58,13 +58,13 @@ export class RoleController {
   /**
    * ROLE API: find one role by role id
    */
-  @Get(':roleId')
+  @Get(':id')
   @HttpCode(HttpStatus.OK)
   @PermissionDecorator(rolePermissionsConstant.ADMIN_ROLE_FIND_ONE)
   async findOne(
     @Param() finOneRoleParamReqDto: PrimaryKeysRoleDto,
   ): Promise<ControllerResDto<Role>> {
-    const { roleId } = finOneRoleParamReqDto;
+    const { id: roleId } = finOneRoleParamReqDto;
     const serviceResponse: Role = await this.roleService.findOne({
       id: roleId,
     });
@@ -102,7 +102,7 @@ export class RoleController {
     @Param() updateRoleParamReq: PrimaryKeysRoleDto,
     @Body() updateRoleBodyReq: UpdateRoleBodyReqDto,
   ): Promise<ControllerResDto<Role>> {
-    const { roleId } = updateRoleParamReq;
+    const { id: roleId } = updateRoleParamReq;
     const serviceResponse: Role = await this.roleService.update(
       roleId,
       updateRoleBodyReq,
@@ -124,7 +124,7 @@ export class RoleController {
     @AdminAuthDecorator() adminAuth: any,
     @Param() deleteRoleParamReq: PrimaryKeysRoleDto,
   ): Promise<ControllerResDto<{ isDeleted: boolean }>> {
-    const { roleId } = deleteRoleParamReq;
+    const { id: roleId } = deleteRoleParamReq;
     const updateRoleBodyReq: DeleteRoleBodyReqDto = {
       hasSoftDeleted: true,
     };
@@ -149,7 +149,7 @@ export class RoleController {
     @AdminAuthDecorator() adminAuth: any,
     @Param() deleteRoleParamReq: PrimaryKeysRoleDto,
   ): Promise<ControllerResDto<Role>> {
-    const { roleId } = deleteRoleParamReq;
+    const { id: roleId } = deleteRoleParamReq;
     const updateRoleBodyReq: DeleteRoleBodyReqDto = {
       hasSoftDeleted: false,
     };
@@ -174,7 +174,7 @@ export class RoleController {
   async hardDelete(
     @Param() deleteRoleParamReq: PrimaryKeysRoleDto,
   ): Promise<ControllerResDto<{ isDeleted: boolean }>> {
-    const { roleId } = deleteRoleParamReq;
+    const { id: roleId } = deleteRoleParamReq;
     const isDeleted: boolean = await this.roleService.delete(roleId);
     return this.globalService.setControllerResponse(
       isDeleted,
@@ -193,7 +193,7 @@ export class RoleController {
     @Param() updateRoleParamReq: PrimaryKeysRoleDto,
     @Body() updateRolePermissionBodyReq: UpdateRolePermissionBodyReqDto,
   ): Promise<ControllerResDto<Role>> {
-    const { roleId } = updateRoleParamReq;
+    const { id: roleId } = updateRoleParamReq;
     const serviceResponse: Role = await this.roleService.updatePermissions(
       roleId,
       updateRolePermissionBodyReq,

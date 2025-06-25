@@ -101,11 +101,7 @@ import {plainToInstance} from 'class-transformer';
       return this.modelService.removeUserBy(saveEntity);
     }
   
-    async findOne(primaryKeyFields:<% if(primaryFields?.length>1) { %>
-      PrimaryKeys<%= className %>Dto,
-      <% } else { %>
-        FindOne<%= className %>ParamReqDto,
-      <% } %>): Promise<<%= entityName %>> {
+    async findOne(primaryKeyFields:PrimaryKeys<%= className %>Dto,): Promise<<%= entityName %>> {
         const metadata = this.<%= entityVar %>Repository.metadata;
         const allRelations = metadata.relations.map((rel) => rel.propertyName);
       const data = await this.<%= entityVar %>Repository.findOne({
@@ -115,7 +111,7 @@ import {plainToInstance} from 'class-transformer';
             <%= element.name %>:primaryKeyFields.<%= element.name %>,
           <% }) %>
           <% } else { %>
-            id: id
+            id: primaryKeyFields.id
           <% } %>
       },
       relations: allRelations,
@@ -127,19 +123,15 @@ import {plainToInstance} from 'class-transformer';
   
     async update(
       updateDto: UpdateAndDelete<%= className %>BodyReqDto,
-      primaryKeyFields:<% if(primaryFields?.length>1) { %>
-        PrimaryKeys<%= className %>Dto,
-        <% } else { %>
-          FindOne<%= className %>ParamReqDto,
-        <% } %>
+      primaryKeyFields: PrimaryKeys<%= className %>Dto, 
         <% if(creationConfig.operator) {%>
           updatedByUser: User,
         <% } %>
-        <% if (creationConfig.softDelete) { %>
+        <% if (creationConfig.withSoftDelete) { %>
       isRollback = false,
       <% } %>
     ): Promise<<%= entityName %>> {
-      <% if (creationConfig.softDelete) { %>
+      <% if (creationConfig.withSoftDelete) { %>
       const rollbackObj: DeleteRollBackDto = isRollback ? { withDeleted: true } : {};
       <% } %>
       let entity = await this.<%= entityVar %>Repository.findOne({
@@ -149,10 +141,10 @@ import {plainToInstance} from 'class-transformer';
                     <%= element.name %>:primaryKeyFields.<%= element.name %>,
                   <% }) %>
                   <% } else { %>
-                    id: id
+                    id: primaryKeyFields.id
                   <% } %>
               },
-              <% if (creationConfig.softDelete) { %>
+              <% if (creationConfig.withSoftDelete) { %>
         ...rollbackObj,
         <% } %>
       });
@@ -165,11 +157,7 @@ import {plainToInstance} from 'class-transformer';
       return await this.<%= entityVar %>Repository.save(entity);
     }
   
-    async delete(primaryKeyFields:<% if(primaryFields?.length>1) { %>
-      PrimaryKeys<%= className %>Dto,
-      <% } else { %>
-        FindOne<%= className %>ParamReqDto,
-      <% } %>): Promise<boolean> {
+    async delete(primaryKeyFields:PrimaryKeys<%= className %>Dto,): Promise<boolean> {
       const data = await this.<%= entityVar %>Repository.findOne({
         where: { 
           <% if (primaryFields) { %>          
@@ -177,14 +165,14 @@ import {plainToInstance} from 'class-transformer';
             <%= element.name %>:primaryKeyFields.<%= element.name %>,
           <% }) %>
           <% } else { %>
-            id: id
+            id: primaryKeyFields.id
           <% } %>
       },
         withDeleted: true,
       });
   
       if (!data) throw new BadRequestException('<%= entityName %> not exists');
-      <% if (creationConfig.softDelete) { %>
+      <% if (creationConfig.withSoftDelete) { %>
       if (!data.deletedAt) throw new BadRequestException('Only soft-deleted records can be deleted');
       <% } %>
       const result = await this.<%= entityVar %>Repository.delete(primaryKeyFields);
@@ -206,7 +194,7 @@ import {plainToInstance} from 'class-transformer';
                   <%= element.name %>:primaryKeyFields.<%= element.name %>,
                 <% }) %>
               <% } else { %>
-                id: id
+                id: primaryKeyFields.id
               <% } %>
             },
             relations: ['<%= field.name %>', ], // Include the relation to modify it
@@ -237,7 +225,7 @@ import {plainToInstance} from 'class-transformer';
                   <%= element.name %>:primaryKeyFields.<%= element.name %>,
                 <% }) %>
               <% } else { %>
-                id: id
+                id: primaryKeyFields.id
               <% } %>
             },
             relations: ['<%= field.name %>', ], // Include the relation to modify it
@@ -250,7 +238,7 @@ import {plainToInstance} from 'class-transformer';
           const <%=field.relation.target.toLowerCase()%>s = await this.<%=field.relation.target.toLowerCase()%>Repository.find({ 
             where: whereConditions,});
 
-          if ( <%=field.relation.target.toLowerCase()%>s) {
+          if ( <%=field.relation.target.toLowerCase()%>s.length === bodyReq.items.length) {
              // Append or replace related <%=field.relation.target.toLowerCase()%>s
               <%= entityVar %>.<%= field.name %> = [...<%= entityVar %>.<%= field.name %>, ...<%=field.relation.target.toLowerCase()%>s];
             } else {

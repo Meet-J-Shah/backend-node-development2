@@ -25,14 +25,10 @@ import {
 } from '../../utils/global/dto/global.dto';
 import {
   FindMany<%= className %>QueryReq,
-  <% if(primaryFields?.length>1) { %>
   PrimaryKeys<%= className %>Dto,
-  <% } else { %>
-    FindOne<%= className %>ParamReqDto,
-  <% } %>
   Create<%= className %>BodyReqDto,
   Update<%= className %>BodyReqDto,
-  <% if(creationConfig.softDelete) { %>
+  <% if(creationConfig.withSoftDelete) { %>
      Delete<%= className %>BodyReqDto,
   <% } %>
 } from './dto/<%= fileName %>.dto';
@@ -117,7 +113,7 @@ export class <%= className %>Controller {
     const isDeleted = await this.<%= camelName %>Service.delete(primaryKeyDto);
     return this.globalService.setControllerResponse({ isDeleted }, '<%= className %> deleted successfully.');
   }
-<% if(creationConfig.softDelete) { %>
+<% if(creationConfig.withSoftDelete) { %>
   @Delete('deleteOne')
   @HttpCode(HttpStatus.OK)
   @PermissionDecorator(<%= camelName %>PermissionsConstant.ADMIN_<%= constantName %>_SOFT_DELETE)

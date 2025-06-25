@@ -51,7 +51,7 @@ export class FindManyRoleQueryReq {
 export class PrimaryKeysRoleDto {
   @IsString()
   @IsNotEmpty()
-  roleId: string;
+  id: string;
 }
 
 export class MultiplePrimaryKeysRoleDto {

@@ -185,7 +185,7 @@ export class Create<%= name %>Table<%= timestamp %> implements MigrationInterfac
       <% if (field.relation && field.relation.type === 'ManyToMany') { %>
         await queryRunner.createTable(
           new Table({
-            name:'<%= field.relation.joinTable?.name || name + "_" + snakeCase(field.name) + "_map" %>',
+            name:'<%= field.relation.joinTable?.name || name.toLowerCase() + "_" + field.relation.target.toLowerCase() + "_map"  %>',
             <% const primaryTablefields=[]; const primaryDBTablefields=[]; %>
             columns: [
             <% if (field.relation.joinTable?.joinColumn) { %>
@@ -206,6 +206,7 @@ export class Create<%= name %>Table<%= timestamp %> implements MigrationInterfac
                         }
                       }
                     %>
+
                     <% primaryDBTablefields.forEach((primaryDbElement, index) => { %> 
                       {
                         name: '<%=primaryDbElement%>',
@@ -269,9 +270,6 @@ export class Create<%= name %>Table<%= timestamp %> implements MigrationInterfac
                   isNullable: false,
                 },
 
-
-
-   
             ],
             foreignKeys: [
               {
@@ -311,17 +309,17 @@ export class Create<%= name %>Table<%= timestamp %> implements MigrationInterfac
         <% const primaryTablefields=[]; const primaryDBTablefields=[]; %>
         await queryRunner.addColumns('<%=field.relation.target.toLowerCase()%>', 
         [
-         <% if (field.relation.joinTable?.joinColumn) { %>
+         <% if (field.relation.joinColumn) { %>
 
 
-              <% primaryDBTablefields.push(field.relation.joinTable.joinColumn.name); 
-                 if(primaryKeys.indexOf(field.relation.joinTable.joinColumn.referencedColumnName) !== -1 && primaryKeys.length === 1)
+              <% primaryDBTablefields.push(field.relation.joinColumn.name); 
+                 if(primaryKeys.indexOf(field.relation.joinColumn.referencedColumnName) !== -1 && primaryKeys.length === 1)
                 {
-                  primaryTablefields.push(field.relation.joinTable.joinColumn.referencedColumnName);
+                  primaryTablefields.push(field.relation.joinColumn.referencedColumnName);
                 }
-                else if (primaryKeys.indexOf(snakeCase(field.relation.joinTable.joinColumn.referencedColumnName)) !== -1 && primaryKeys.length === 1)
+                else if (primaryKeys.indexOf(snakeCase(field.relation.joinColumn.referencedColumnName)) !== -1 && primaryKeys.length === 1)
                 {
-                  primaryTablefields.push(snakeCase(field.relation.joinTable.joinColumn.referencedColumnName));
+                  primaryTablefields.push(snakeCase(field.relation.joinColumn.referencedColumnName));
                 }
                 else{
                   primaryTablefields.push(...primaryKeys);

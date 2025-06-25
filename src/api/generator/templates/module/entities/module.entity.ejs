@@ -32,13 +32,17 @@ import { <%= field.relation.target %> } from "../../<%= relationFile %>/entities
 
 @Entity()
 export class <%= name %> {
-
+  <% const primaryKeys=[]; const primaryDBKeys=[]; const primaryKeyTypes=[]; %>
   <% if (primaryFields) {%>
     <% if (primaryFields.length === 1) {%>
-  
+      <% primaryKeys.push(primaryFields[0].name); 
+         primaryDBKeys.push(primaryFields[0].dbName || snakeCase(primaryFields[0].name));  
+       %>
       <% if (primaryFields[0].dtype === 'uuid') { %>
+        <%  primaryKeyTypes.push('char');%>
         @PrimaryColumn({ type: 'char', length: '36', name: '<%= primaryFields[0].dbName || snakeCase(primaryFields[0].name) %>' ,default: () => 'UUID()' })
       <% } else { %>
+        <%  primaryKeyTypes.push(primaryFields[0].dtype || 'bigint');%>
           @PrimaryGeneratedColumn({ type: 
             <% if (primaryFields[0].dtype) { %>'<%= primaryFields[0].dtype %>'
             <% } else{ %>'bigint' <% } %>,
@@ -51,11 +55,17 @@ export class <%= name %> {
      
     <% } else { %>
           <% primaryFields.forEach(primaryField => { %>
+            <%  primaryKeys.push( primaryField.name);
+                primaryDBKeys.push( primaryField.dbName || snakeCase(primaryField.name));  
+            %>
             @PrimaryColumn({ type: 
               <% if (primaryField.dtype === 'uuid') { %>
+                <%  primaryKeyTypes.push('char');%>
                 'char',
                 length: '36' 
-              <% } else{ %>'<%= primaryFields[0].dtype || "bigint" %>' <% } %>,
+              <% } else{ %>
+                <%  primaryKeyTypes.push(primaryField.dtype || 'bigint');%>
+                '<%= primaryFields[0].dtype || "bigint" %>' <% } %>,
               <% if (primaryField.dbName) { %>name: '<%= primaryField.dbName %>',
               <% } else{ %>name: '<%=snakeCase( primaryField.name )%>' <% } %>
             })
@@ -64,6 +74,8 @@ export class <%= name %> {
           <% }) %>
     <% } %>
   <% } else { %>
+    <% primaryKeys.push('id'); %>
+    <%  primaryKeyTypes.push( 'bigint');%>
       @PrimaryGeneratedColumn({ type: 'bigint', name: 'id' })
       id: string;
   <% } %>
@@ -90,8 +102,62 @@ export class <%= name %> {
     } 
   )
     <% if (field.relation.type === 'ManyToMany') { %>  
-     
-      @JoinTable(<%- field.relation.joinTable ? JSON.stringify(field.relation.joinTable, null, 2) : '' %>)
+      <% const primaryTablefields=[]; const primaryDBTablefields=[]; %>
+      <% if (field.relation.joinTable?.joinColumn) { %>
+
+
+      <% primaryDBTablefields.push(field.relation.joinTable.joinColumn.name); 
+        if(primaryKeys.indexOf(
+          (field.relation.joinTable.joinColumn.referencedColumnName) !== -1 
+          || primaryKeys.indexOf(snakeCase(field.relation.joinTable.joinColumn.referencedColumnName) !== -1) )
+          && primaryKeys.length === 1)
+        {
+          primaryTablefields.push(field.relation.joinTable.joinColumn.referencedColumnName);
+        }
+        else{
+          primaryTablefields.push(...primaryKeys);
+          if(primaryKeys.length>1){
+            primaryDBTablefields.push(...primaryDBKeys.slice(1).map(item => `${dbTableName}_${item}`));
+          }
+        }
+      %>
+      <% } else { %>
+      <% if (primaryFields && primaryFields.length === 1) { %>
+    
+        <% const name2 = `${primaryFields[0].dbName || snakeCase(primaryFields[0].name)}`;
+          primaryTablefields.push(primaryFields[0].name); 
+          primaryDBTablefields.push(`${dbTableName}_${name2}`);
+        %>
+
+      <% } else if (primaryFields && primaryFields.length > 1) { %>
+      <% primaryFields.forEach((field, index) => { %>
+          <% const name2 = `${field.dbName || snakeCase(field.name)}`;
+            primaryTablefields.push(`${field.name}`); 
+            primaryDBTablefields.push(`${dbTableName}_${name2}`);
+          %>
+      <% }); %>
+      <% } else { %>
+        <%  primaryTablefields.push(`id`); 
+            primaryDBTablefields.push(`${dbTableName}_id`);
+        %>
+      <% } %>
+      <% } %>
+
+      @JoinTable({name : '<%= field.relation.joinTable?.name || name.toLowerCase() + "_" + field.relation.target.toLowerCase() + "_map" %>',
+      
+        joinColumns:[
+         <% primaryDBTablefields.forEach((field, index) => { %>
+            {
+              name: '<%- field %>',
+              referencedColumnName: '<%- primaryTablefields[index] %>',
+            },
+          <%}); %>
+        ],
+        inverseJoinColumns:[ {
+          name: '<%= field.relation.joinTable?.inverseJoinColumn?.name || field.relation.target.toLowerCase() + '_id' %>',
+          referencedColumnName: '<%= field.relation.joinTable?.inverseJoinColumn?.referencedColumnName || 'id' %>', 
+        },]
+      })
       <%= field.name %>: <%- field.relation.isArray ? `${field.relation.target}[]` : `${field.relation.target}` %>;
 <% } else if (['OneToOne', 'ManyToOne'].includes(field.relation.type)) { %>
   @JoinColumn(
