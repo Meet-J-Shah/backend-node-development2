@@ -9,6 +9,7 @@ import {
   IsObject,
   IsIn,
   ValidateIf,
+  ArrayMaxSize,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import {
@@ -183,6 +184,7 @@ export class GenerateDto {
 
   @IsArray()
   @IsOptional()
+  @ArrayMaxSize(1)
   @ValidateNested({ each: true })
   @Type(() => primaryFieldDto)
   primaryFields: primaryFieldDto[];
