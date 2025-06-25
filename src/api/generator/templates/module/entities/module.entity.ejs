@@ -12,11 +12,14 @@ import {
   JoinColumn,
   CreateDateColumn,
   UpdateDateColumn,
-  DeleteDateColumn
+  DeleteDateColumn,
+  BeforeInsert,
 } from 'typeorm';
 import { Exclude } from 'class-transformer';
 import {User} from "../../user/entities/user.entity";
-
+<% if (primaryFields && primaryFields[0] && primaryFields[0].dtype === 'uuid') { %>
+import { v4 as uuidv4 } from 'uuid';
+<% } %>
 
 <%
   const importedRelations = new Set();
@@ -43,16 +46,20 @@ export class <%= name %> {
         @PrimaryColumn({ type: 'char', length: '36', name: '<%= primaryFields[0].dbName || snakeCase(primaryFields[0].name) %>' ,default: () => 'UUID()' })
       <% } else { %>
         <%  primaryKeyTypes.push(primaryFields[0].dtype || 'bigint');%>
-          @PrimaryGeneratedColumn({ type: 
-            <% if (primaryFields[0].dtype) { %>'<%= primaryFields[0].dtype %>'
-            <% } else{ %>'bigint' <% } %>,
-            <% if (primaryFields[0].dbName) { %>name: '<%= primaryFields[0].dbName %>',
-            <% } else{ %>name: '<%= snakeCase(primaryFields[0].name)%>' <% } %>
+          @PrimaryGeneratedColumn({ 
+            type: '<%= primaryFields[0].dtype ||  "bigint" %>',
+            name: '<%= primaryFields[0].dbName || snakeCase(primaryFields[0].name) %>'
           })
       <% } %>
-        <%= primaryFields[0].name %>: <% if (primaryFields[0].type) { %><%= primaryFields[0].type %>
-        <% } else{ %>string <% } %>;
-     
+        <%= primaryFields[0].name %>: <%= primaryFields[0].type || 'string' %>
+        <% if (primaryFields[0].dtype === 'uuid') { %>
+          @BeforeInsert()
+            generateUUID() {
+              if (!this.<%= primaryFields[0].name %>) {
+                this.<%= primaryFields[0].name %> = uuidv4();
+              }
+            }
+          <% } %>
     <% } else { %>
           <% primaryFields.forEach(primaryField => { %>
             <%  primaryKeys.push( primaryField.name);

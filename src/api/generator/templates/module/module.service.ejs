@@ -233,8 +233,10 @@ import {plainToInstance} from 'class-transformer';
 
           if (!<%= entityVar %>) throw new NotFoundException('<%= entityName %> not found');
 
-          const whereConditions: FindOptionsWhere<Permission>[] = bodyReq.items.map(
-            (item) => plainToInstance(<%= field.relation.target %>, item),);
+          // const whereConditions: FindOptionsWhere<<%= field.relation.target %>>[] = bodyReq.items.map(
+          //   (item) => plainToInstance(<%= field.relation.target %>, item),);
+          const whereConditions = bodyReq.items as FindOptionsWhere<<%= field.relation.target %>>[];
+          
           const <%=field.relation.target.toLowerCase()%>s = await this.<%=field.relation.target.toLowerCase()%>Repository.find({ 
             where: whereConditions,});
 
