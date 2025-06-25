@@ -10,31 +10,11 @@ import {
     IsIn,
     Matches ,
     IsUUID ,
+    ValidateNested,
   } from 'class-validator';
   import { Transform, Type } from 'class-transformer'; 
   import { IntersectionType } from '@nestjs/mapped-types';
-  export class <%= className %>FullBodyReqDto {
-    @IsString()
-    @IsOptional()
-    @MaxLength(20)
-    name?: string;
-  
-    @IsString()
-    @IsOptional()
-    description?: string;
-  
-    @IsBoolean()
-    @IsOptional()
-    isAdmin?: boolean;
-  
-    @IsBoolean()
-    @IsOptional()
-    hasPublished?: boolean;
-  
-    @IsBoolean()
-    @IsOptional()
-    hasSoftDeleted?: boolean;
-  }
+
   
   export class FindMany<%= className %>QueryReq {
     @IsInt()
@@ -47,44 +27,49 @@ import {
   }
   
   
-  <%  if (primaryFields && primaryFields.length > 1) { %>
+  
     export class PrimaryKeys<%= className %>Dto {
-      <% primaryFields.forEach(field => { %>
-        <% if (field.dtype === 'uuid') { %>
-          @IsUUID()
-          <% } else if ( field.dtype === 'int') { %>
+      <%  if (primaryFields && primaryFields.length > 1) { %>
+        <% primaryFields.forEach(field => { %>
+            <% if (field.dtype === 'uuid') { %>
+              @IsUUID()
+            <% } else if ( field.dtype === 'int') { %>
+                @Type(() => Number)
+                @IsInt()
+            <% } else { %>
+                @IsString()
+                @Matches(/^\d+$/, { message: 'ID must be a string of digits' })
+            <% } %>
+              @IsNotEmpty()
+            <%= field.name %>: <%= field.tsType || field.type || 'string' %>;
+          <% }) %>
+      <% } else { %>
+
+        <% if (primaryFields && primaryFields.length === 1) { %>
+          <% if (primaryFields[0].dtype === 'uuid') { %>
+            @IsUUID()
+          <% } else if (primaryFields[0].dtype === 'int') { %>
             @Type(() => Number)
             @IsInt()
           <% } else { %>
             @IsString()
-            @Matches(/^\d+$/, { message: 'ID must be a string of digits' })
+              @Matches(/^\d+$/, { message: 'ID must be a string of digits' })
           <% } %>
           @IsNotEmpty()
-          <%= field.name %>: <%= field.tsType || field.type || 'string' %>;
-      <% }) %>
-    }
-  <% } else { %>
-    export class FindOne<%= className %>ParamReqDto {
-      <% if (primaryFields && primaryFields.length === 1) { %>
-        <% if (primaryFields[0].dtype === 'uuid') { %>
-          @IsUUID()
-        <% } else if (primaryFields[0].dtype === 'int') { %>
-          @Type(() => Number)
-          @IsInt()
-        <% } else { %>
-          @IsString()
+          <%= primaryFields[0].name %>: <%= primaryFields[0].tsType || primaryFields[0].type || 'string' %>;
+          <% } else { %>
+            @IsString()
             @Matches(/^\d+$/, { message: 'ID must be a string of digits' })
-        <% } %>
-        @IsNotEmpty()
-        <%= primaryFields[0].name %>: <%= primaryFields[0].tsType || primaryFields[0].type || 'string' %>;
-        <% } else { %>
-          @IsString()
-          @Matches(/^\d+$/, { message: 'ID must be a string of digits' })
-          @IsNotEmpty()
-          id: string;
-        <% } %>
+            @IsNotEmpty()
+            id: string;
+          <% } %>
+      <% } %>
     }
-  <% } %>
+    export class MultiplePrimaryKeys<%=className %>Dto {
+      @ValidateNested({ each: true })
+      @Type(() => PrimaryKeys<%= className %>Dto)
+      items: PrimaryKeys<%= className %>Dto[];
+    }
   export class Create<%= className %>BodyReqDto 
     <%  if (primaryFields && primaryFields.length > 1) { %> 
       extends  PrimaryKeys<%= className %>Dto
