@@ -30,13 +30,14 @@ import {plainToInstance} from 'class-transformer';
 <%
   const importedRelations = new Set();
 %>
+import { syncManyToManyRelation } from '../../utils/relation-utils';
 <% fields.forEach(field => { %>
   <% if (field.relation && field.relation.type === 'ManyToMany'  && !importedRelations.has(field.relation.target)) { 
        const relationFile = field.relation.target.toLowerCase();
        const relatedClass= field.relation.target[0].toUpperCase() + field.relation.target.slice(1);
        importedRelations.add(field.relation.target);
   %>
-    import { PrimaryKeys<%= relatedClass %>Dto , MultiplePrimaryKeys<%=relatedClass %>Dto } from "../<%= relationFile %>/dto/<%= relationFile %>.dto";
+    import {  MultiplePrimaryKeys<%=relatedClass %>Dto } from "../<%= relationFile %>/dto/<%= relationFile %>.dto";
     import { <%= field.relation.target %> } from "../<%= relationFile %>/entities/<%= relationFile %>.entity";
   <% } %>
 <% }) %>
@@ -185,38 +186,8 @@ import {plainToInstance} from 'class-transformer';
       <% if (field.relation?.type==="ManyToMany") {%>
         <% const relatedClass= field.relation.target[0].toUpperCase() + field.relation.target.slice(1); %>
 
-        async addOne<%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %>(bodyReq:PrimaryKeys<%= relatedClass %>Dto, primaryKeyFields:PrimaryKeys<%= className %>Dto,)
-        {
-          const <%= entityVar %> = await this.<%= entityVar %>Repository.findOne({
-            where: {
-              <% if (primaryFields) { %>          
-                <% primaryFields.forEach(element => { %>
-                  <%= element.name %>:primaryKeyFields.<%= element.name %>,
-                <% }) %>
-              <% } else { %>
-                id: primaryKeyFields.id
-              <% } %>
-            },
-            relations: ['<%= field.name %>', ], // Include the relation to modify it
-          });
-
-          if (!<%= entityVar %>) throw new NotFoundException('<%= entityName %> not found');
-          const where = plainToInstance(<%= field.relation.target %>, bodyReq);
-          const <%=field.relation.target.toLowerCase()%>s = await this.<%=field.relation.target.toLowerCase()%>Repository.findOne({ 
-            where: where as FindOptionsWhere<<%= field.relation.target %>>,});
-
-          if ( <%=field.relation.target.toLowerCase()%>s) {
-             // Append or replace related <%=field.relation.target.toLowerCase()%>s
-              <%= entityVar %>.<%= field.name %> = [...<%= entityVar %>.<%= field.name %>, <%=field.relation.target.toLowerCase()%>s];
-            } else {
-              // Handle case when role is not found
-              throw new NotFoundException('<%=field.relation.target%> not found');
-            }
-
-          return await this.<%= entityVar %>Repository.save(<%= entityVar %>); 
-        }
-
-        async addMany<%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %>(bodyReq:MultiplePrimaryKeys<%=relatedClass %>Dto, primaryKeyFields:PrimaryKeys<%= className %>Dto,)
+       
+        async modify<%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %>(connectIds:MultiplePrimaryKeys<%=relatedClass %>Dto,disconnectIds:MultiplePrimaryKeys<%=relatedClass %>Dto, primaryKeyFields:PrimaryKeys<%= className %>Dto,)
         {
           const <%= entityVar %> = await this.<%= entityVar %>Repository.findOne({
             where: {
@@ -233,22 +204,42 @@ import {plainToInstance} from 'class-transformer';
 
           if (!<%= entityVar %>) throw new NotFoundException('<%= entityName %> not found');
 
-          // const whereConditions: FindOptionsWhere<<%= field.relation.target %>>[] = bodyReq.items.map(
-          //   (item) => plainToInstance(<%= field.relation.target %>, item),);
-          const whereConditions = bodyReq.items as FindOptionsWhere<<%= field.relation.target %>>[];
-          
-          const <%=field.relation.target.toLowerCase()%>s = await this.<%=field.relation.target.toLowerCase()%>Repository.find({ 
-            where: whereConditions,});
 
-          if ( <%=field.relation.target.toLowerCase()%>s.length === bodyReq.items.length) {
-             // Append or replace related <%=field.relation.target.toLowerCase()%>s
-              <%= entityVar %>.<%= field.name %> = [...<%= entityVar %>.<%= field.name %>, ...<%=field.relation.target.toLowerCase()%>s];
-            } else {
-              // Handle case when role is not found
-              throw new NotFoundException('<%=field.relation.target%> not found');
+          // get  the  entities for removing from relation
+          const whereConditions = disconnectIds.items as FindOptionsWhere<<%= field.relation.target %>>[];
+          let <%=field.relation.target.toLowerCase()%>sToRemove: <%- field.relation.target %>[]=[];
+          if (Array.isArray(whereConditions) && whereConditions.length > 0) {
+              <%=field.relation.target.toLowerCase()%>sToRemove = await this.<%=field.relation.target.toLowerCase()%>Repository.find({ 
+                where: whereConditions,});
+            }
+           
+
+          if ( <%=field.relation.target.toLowerCase()%>sToRemove?.length !== disconnectIds.items.length) {
+              throw new NotFoundException(' In the disconnectIds  some or all<%=field.relation.target%> not found');
             }
 
-          return await this.<%= entityVar %>Repository.save(<%= entityVar %>); 
+           // get  the  entities for adding to relation
+           const whereConditionsToAdd = connectIds.items as FindOptionsWhere<<%= field.relation.target %>>[];
+           let <%=field.relation.target.toLowerCase()%>sToAdd: <%- field.relation.target %>[]=[];
+           if (Array.isArray(whereConditionsToAdd) && whereConditionsToAdd.length > 0) 
+           {
+              <%=field.relation.target.toLowerCase()%>sToAdd = await this.<%=field.relation.target.toLowerCase()%>Repository.find({ 
+                where: whereConditionsToAdd,});
+            }
+
+          if ( <%=field.relation.target.toLowerCase()%>sToAdd?.length !== connectIds.items.length) {
+              throw new NotFoundException('In the connectIds  some or all <%=field.relation.target%> not found');
+            }
+              const <%=field.relation.target.toLowerCase()%>Meta = this.<%=field.relation.target.toLowerCase()%>Repository.metadata;
+
+              <%= entityVar %>['<%= field.name %>'] = syncManyToManyRelation(
+                <%= entityVar %>['<%= field.name %>'],
+                <%=field.relation.target.toLowerCase()%>sToAdd,
+                <%=field.relation.target.toLowerCase()%>sToRemove,
+                <%=field.relation.target.toLowerCase()%>Meta,
+            );
+
+          return await this.<%= entityVar %>Repository.save(<%= entityVar %>);
         }
       <% } %>
     <% }) %>
