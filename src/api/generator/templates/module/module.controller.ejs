@@ -6,7 +6,6 @@ import {
   Put,
   Delete,
   Body,
-  Param,
   Query,
   HttpCode,
   HttpStatus,
@@ -26,11 +25,26 @@ import {
 } from '../../utils/global/dto/global.dto';
 import {
   FindMany<%= className %>QueryReq,
-  FindOne<%= className %>ParamReqDto,
+  PrimaryKeys<%= className %>Dto,
   Create<%= className %>BodyReqDto,
   Update<%= className %>BodyReqDto,
-  Delete<%= className %>BodyReqDto,
+  <% if(creationConfig.withSoftDelete) { %>
+     Delete<%= className %>BodyReqDto,
+  <% } %>
 } from './dto/<%= fileName %>.dto';
+
+<%
+  const importedRelations = new Set();
+%>
+<% fields.forEach(field => { %>
+  <% if (field.relation && field.relation.type === 'ManyToMany'  && !importedRelations.has(field.relation.target)) { 
+       const relationFile = field.relation.target.toLowerCase();
+       const relatedClass= field.relation.target[0].toUpperCase() + field.relation.target.slice(1);
+       importedRelations.add(field.relation.target);
+  %>
+import {  MultiplePrimaryKeys<%=relatedClass %>Dto } from "../<%= relationFile %>/dto/<%= relationFile %>.dto";
+  <% } %>
+<% }) %>
 
 @Controller({ path: 'admin/<%= fileNamePlural %>', version: '1' })
 @UseGuards(AdminAuthGuard)
@@ -56,62 +70,100 @@ export class <%= className %>Controller {
   @HttpCode(HttpStatus.OK)
   @PermissionDecorator(<%= camelName %>PermissionsConstant.ADMIN_<%= constantName %>_CREATE)
   async create(
-    @AdminAuthDecorator() adminAuth: any,
+    <% if(creationConfig.operator) {%>
+      @AdminAuthDecorator() adminAuth: any,
+    <% } %>
     @Body() bodyReq: Create<%= className %>BodyReqDto,
   ): Promise<ControllerResDto<<%= className %>>> {
-    const result = await this.<%= camelName %>Service.create(bodyReq);
+    const result = await this.<%= camelName %>Service.create(bodyReq    <% if(creationConfig.operator) {%>
+     , adminAuth,
+    <% } %>);
     return this.globalService.setControllerResponse(result, '<%= className %> created successfully.');
   }
 
-  @Get(':id')
+  @Get('getOne')
   @HttpCode(HttpStatus.OK)
   @PermissionDecorator(<%= camelName %>PermissionsConstant.ADMIN_<%= constantName %>_FIND_ONE)
-  async findOne(@Param() paramReqDto:  FindOne<%= className %>ParamReqDto ): Promise<ControllerResDto<<%= className %>>> {
-    const result = await this.<%= camelName %>Service.findOne(paramReqDto.id);
+  async findOne( @Query() primaryKeyDto:PrimaryKeys<%= className %>Dto): Promise<ControllerResDto<<%= className %>>> {
+    const result = await this.<%= camelName %>Service.findOne(primaryKeyDto);
     return this.globalService.setControllerResponse(result);
   }
 
-  @Put(':id')
+  @Put('updateOne')
   @HttpCode(HttpStatus.OK)
   @PermissionDecorator(<%= camelName %>PermissionsConstant.ADMIN_<%= constantName %>_UPDATE)
   async update(
-    @AdminAuthDecorator() adminAuth: any,
-    @Param() paramReqDto: FindOne<%= className %>ParamReqDto,
+    <% if(creationConfig.operator) {%>
+      @AdminAuthDecorator() adminAuth: any,
+    <% } %>
+    @Query() primaryKeyDto: PrimaryKeys<%= className %>Dto,      
     @Body() bodyReq: Update<%= className %>BodyReqDto,
   ): Promise<ControllerResDto<<%= className %>>> {
-    const result = await this.<%= camelName %>Service.update(bodyReq, paramReqDto.id);
+    const result = await this.<%= camelName %>Service.update(bodyReq, primaryKeyDto<% if(creationConfig.operator) {%>
+      , adminAuth,
+     <% } %>);
     return this.globalService.setControllerResponse(result, '<%= className %> updated successfully.');
   }
 
-  @Delete(':id/permanent')
+  @Delete('deletePermanent')
   @HttpCode(HttpStatus.OK)
   @PermissionDecorator(<%= camelName %>PermissionsConstant.ADMIN_<%= constantName %>_HARD_DELETE)
-  async hardDelete(@Param() paramReqDto: FindOne<%= className %>ParamReqDto ): Promise<ControllerResDto<{ isDeleted: boolean }>> {
-    const isDeleted = await this.<%= camelName %>Service.delete(paramReqDto.id);
+  async hardDelete(@Query() primaryKeyDto:   PrimaryKeys<%= className %>Dto
+   ): Promise<ControllerResDto<{ isDeleted: boolean }>> {
+    const isDeleted = await this.<%= camelName %>Service.delete(primaryKeyDto);
     return this.globalService.setControllerResponse({ isDeleted }, '<%= className %> deleted successfully.');
   }
-
-  @Delete(':id')
+<% if(creationConfig.withSoftDelete) { %>
+  @Delete('deleteOne')
   @HttpCode(HttpStatus.OK)
   @PermissionDecorator(<%= camelName %>PermissionsConstant.ADMIN_<%= constantName %>_SOFT_DELETE)
   async softDelete(
-    @AdminAuthDecorator() adminAuth: any,
-    @Param() paramReqDto: FindOne<%= className %>ParamReqDto ,
-  ): Promise<ControllerResDto<{ isDeleted: boolean }>> {
+    <% if(creationConfig.operator) {%>
+      @AdminAuthDecorator() adminAuth: any,
+    <% } %>
+    @Query() primaryKeyDto: PrimaryKeys<%= className %>Dto,): Promise<ControllerResDto<{ isDeleted: boolean }>> {
     const bodyReq: Delete<%= className %>BodyReqDto = { hasSoftDeleted: true };
-    const result = await this.<%= camelName %>Service.update(bodyReq, paramReqDto.id);
+    const result = await this.<%= camelName %>Service.update(bodyReq, primaryKeyDto<% if(creationConfig.operator) {%>
+      , adminAuth,
+     <% } %>);
     return this.globalService.setControllerResponse({ isDeleted: !!result }, '<%= className %> deleted successfully.');
   }
 
-  @Put(':id/rollback')
+  @Put('rollbackOne')
   @HttpCode(HttpStatus.OK)
   @PermissionDecorator(<%= camelName %>PermissionsConstant.ADMIN_<%= constantName %>_ROLLBACK)
   async rollback(
-    @AdminAuthDecorator() adminAuth: any,
-    @Param() paramReqDto: FindOne<%= className %>ParamReqDto ,
-  ): Promise<ControllerResDto<<%= className %>>> {
+    <% if(creationConfig.operator) {%>
+      @AdminAuthDecorator() adminAuth: any,
+    <% } %>
+    @Query() primaryKeyDto:PrimaryKeys<%= className %>Dto,): Promise<ControllerResDto<<%= className %>>> {
     const bodyReq: Delete<%= className %>BodyReqDto = { hasSoftDeleted: false };
-    const result = await this.<%= camelName %>Service.update(bodyReq, paramReqDto.id, true);
+    const result = await this.<%= camelName %>Service.update(bodyReq, primaryKeyDto,
+    <% if(creationConfig.operator) {%>
+      adminAuth,
+     <% } %> 
+     true);
     return this.globalService.setControllerResponse(result, '<%= className %> rollback successful.');
   }
+  <% } %>
+ // apis for entries in join  tables
+  <% fields.forEach(field => { %>
+
+    <% if (field.relation?.type==="ManyToMany") {%>
+      <% const relatedClass= field.relation.target[0].toUpperCase() + field.relation.target.slice(1); %>
+     
+
+      @Post('modify<%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %>')
+      @HttpCode(HttpStatus.OK)
+      @PermissionDecorator(<%= camelName %>PermissionsConstant.ADMIN_<%= constantName %>_CREATE)
+      async addMany<%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %>(
+        @Body('connectIds') connectIds:  MultiplePrimaryKeys<%=relatedClass %>Dto,
+        @Body('disconnectIds') disconnectIds: MultiplePrimaryKeys<%=relatedClass %>Dto,
+        @Query() primaryKeyDto:PrimaryKeys<%= className %>Dto,): Promise<ControllerResDto<{ isAdded: boolean }>> {
+        const result = await this.<%= camelName %>Service.modify<%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %>(connectIds, disconnectIds,primaryKeyDto,);
+        return this.globalService.setControllerResponse({ isAdded: !!result }, 'addMany <%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %> added successfully.');
+      }
+      <% } %>
+   
+  <% }) %>
 }

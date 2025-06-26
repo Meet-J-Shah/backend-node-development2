@@ -5,32 +5,16 @@ import {
     IsString,
     IsBoolean,
     IsOptional,
+    IsArray,
     IsInt,
+    IsIn,
+    Matches ,
+    IsUUID ,
+    ValidateNested,
   } from 'class-validator';
-  import { Transform } from 'class-transformer'; 
+  import { Transform, Type } from 'class-transformer'; 
   import { IntersectionType } from '@nestjs/mapped-types';
-  export class <%= className %>FullBodyReqDto {
-    @IsString()
-    @IsOptional()
-    @MaxLength(20)
-    name?: string;
-  
-    @IsString()
-    @IsOptional()
-    description?: string;
-  
-    @IsBoolean()
-    @IsOptional()
-    isAdmin?: boolean;
-  
-    @IsBoolean()
-    @IsOptional()
-    hasPublished?: boolean;
-  
-    @IsBoolean()
-    @IsOptional()
-    hasSoftDeleted?: boolean;
-  }
+
   
   export class FindMany<%= className %>QueryReq {
     @IsInt()
@@ -42,68 +26,167 @@ import {
     limit: number;
   }
   
-  export class FindOne<%= className %>ParamReqDto {
-    @IsString()
-    @IsNotEmpty()
-    id: string;
-  }
   
-  export class Create<%= className %>BodyReqDto {
+  
+    export class PrimaryKeys<%= className %>Dto {
+      <%  if (primaryFields && primaryFields.length > 1) { %>
+        <% primaryFields.forEach(field => { %>
+            <% if (field.dtype === 'uuid') { %>
+              @IsUUID()
+            <% } else if ( field.dtype === 'int') { %>
+                @Type(() => Number)
+                @IsInt()
+            <% } else { %>
+                @IsString()
+                @Matches(/^\d+$/, { message: 'ID must be a string of digits' })
+            <% } %>
+              @IsNotEmpty()
+            <%= field.name %>: <%= field.tsType || field.type || 'string' %>;
+          <% }) %>
+      <% } else { %>
+
+        <% if (primaryFields && primaryFields.length === 1) { %>
+          <% if (primaryFields[0].dtype === 'uuid') { %>
+            @IsUUID()
+          <% } else if (primaryFields[0].dtype === 'int') { %>
+            @Type(() => Number)
+            @IsInt()
+          <% } else { %>
+            @IsString()
+              @Matches(/^\d+$/, { message: 'ID must be a string of digits' })
+          <% } %>
+          @IsNotEmpty()
+          <%= primaryFields[0].name %>: <%= primaryFields[0].tsType || primaryFields[0].type || 'string' %>;
+          <% } else { %>
+            @IsString()
+            @Matches(/^\d+$/, { message: 'ID must be a string of digits' })
+            @IsNotEmpty()
+            id: string;
+          <% } %>
+      <% } %>
+    }
+    export class MultiplePrimaryKeys<%=className %>Dto {
+      @ValidateNested({ each: true })
+      @Type(() => PrimaryKeys<%= className %>Dto)
+      items: PrimaryKeys<%= className %>Dto[];
+    }
+  export class Create<%= className %>BodyReqDto 
+    <%  if (primaryFields && primaryFields.length > 1) { %> 
+      extends  PrimaryKeys<%= className %>Dto
+    <% } %>
+  {
     <% fields.forEach(field => { %>
-    <% if (field.apiProperty) { %>
-    @ApiProperty()
-    <% } %>
-    <% if (field.type === 'string') { %>
-    @IsString()
-    <% } else if (field.type === 'boolean') { %>
-    @IsBoolean()
-    <% } else if (field.type === 'number' || field.type === 'int') { %>
-    @IsInt()
-    <% } else if (field.type === 'array') { %>
-    @IsArray()
-    <% } %>
-    <% if (field.optional) { %>
-    @IsOptional()
-    <% } else { %>
-    @IsNotEmpty()
-    <% } %>
-    <% if (field.maxLength) { %>
-    @MaxLength(<%= field.maxLength %>)
-    <% } %>
-    <%= field.name %>: <%= field.tsType || field.type %>;
+      <% if (field.apiProperty) { %>
+      @ApiProperty()
+      <% } %>
+    
+      <% if (field.relation) { %>
+        <% if (['OneToOne', 'ManyToOne'].includes(field.relation.type)) { %> 
+          @IsOptional()
+          @IsString()
+          <%= field.name %>Id?: string;
+        <% } else { %>
+          @IsOptional()
+          @IsArray()
+          @IsString({ each: true })
+          <%= pluralize.singular(field.name) %>Ids?: string[];
+        <% } %>
+    
+      <% } else { %>
+        <% if (field.type === 'string') { %>
+        @IsString()
+        <% } else if (field.type === 'boolean') { %>
+        @IsBoolean()
+        <% } else if (field.type === 'number' || field.type === 'int') { %>
+        @IsInt()
+        <% } else if (field.type === 'array') { %>
+        @IsArray()
+
+        <% } else { %>
+        @IsNotEmpty()
+        <% } %>
+    
+        <% if (field.maxLength) { %>
+        @MaxLength(<%= field.maxLength %>)
+        <% } %>
+       
+    
+        <% if (!field.nullable) { %>
+          @IsOptional()
+          <% if (field.enum) { %>
+            @IsIn(<%- JSON.stringify(field.enum) %>)
+            <%= field.name %>?: <%- field.enum.map(v => `'${v}'`).join(' | ') %>;
+          <% } else { %>
+              <%= field.name %>?: <%= field.tsType || field.type %>;
+          <% } %>
+        <% } else { %>
+          <% if (field.enum) { %>
+            @IsIn(<%- JSON.stringify(field.enum) %>)
+            <%= field.name %>: <%- field.enum.map(v => `'${v}'`).join(' | ') %>;
+          <% } else { %>
+              <%= field.name %>: <%= field.tsType || field.type %>;
+          <% } %>          
+        <% } %>
+      <% } %>
     <% }) %>
+      
   }
   
   export class Update<%= className %>BodyReqDto {
-    <% fields.forEach(field => { if (field.updatable !== false) { %>
-    <% if (field.apiProperty) { %>
-    @ApiProperty()
-    <% } %>
-    <% if (field.type === 'string') { %>
-    @IsString()
-    <% } else if (field.type === 'boolean') { %>
-    @IsBoolean()
-    <% } else if (field.type === 'number' || field.type === 'int') { %>
-    @IsInt()
-    <% } else if (field.type === 'array') { %>
-    @IsArray()
-    <% } %>
-    @IsOptional()
-    <% if (field.maxLength) { %>
-    @MaxLength(<%= field.maxLength %>)
-    <% } %>
-    <%= field.name %>?: <%= field.tsType || field.type %>;
-    <% }}); %>
+    <% fields.forEach(field => { %>
+      <% if (field.apiProperty) { %>
+      @ApiProperty()
+      <% } %>
+    
+      <% if (field.relation) { %>
+        <% if (['OneToOne', 'ManyToOne'].includes(field.relation.type)) { %> 
+          @IsOptional()
+          @IsString()
+          <%= field.name %>Id?: string;
+        <% } else { %>
+          @IsOptional()
+          @IsArray()
+          @IsString({ each: true })
+          <%= pluralize.singular(field.name) %>Ids?: string[];
+        <% } %>
+    
+      <% } else { %>
+        <% if (field.type === 'string') { %>
+        @IsString()
+        <% } else if (field.type === 'boolean') { %>
+        @IsBoolean()
+        <% } else if (field.type === 'number' || field.type === 'int') { %>
+        @IsInt()
+        <% } else if (field.type === 'array') { %>
+        @IsArray()
+    
+    
+
+ 
+        <% } else { %>
+        @IsNotEmpty()
+        <% } %>
+    
+        <% if (field.maxLength) { %>
+        @MaxLength(<%= field.maxLength %>)
+        <% } %>
+        @IsOptional()
+        <%= field.name %>?: <%= field.tsType || field.type %>;
+      <% } %>
+    <% }) %>
   }
   
-  export class Delete<%= className %>BodyReqDto {
-    @IsBoolean()
-    @IsOptional()
-    hasSoftDeleted?: boolean;
-  }
+  <% if(creationConfig.withSoftDelete) {%>
+    export class Delete<%= className %>BodyReqDto {
+      @IsBoolean()
+      @IsOptional()
+      hasSoftDeleted?: boolean;
+    }
+  <% } %>
+
   
   export class UpdateAndDelete<%= className %>BodyReqDto extends IntersectionType(
     Update<%= className %>BodyReqDto,
-    Delete<%= className %>BodyReqDto,
+    <% if(creationConfig.withSoftDelete) {%>Delete<%= className %>BodyReqDto,<% } %>
   ) {}
   

@@ -170,7 +170,7 @@ export class CreateInitialTables1724235882063 implements MigrationInterface {
       true,
     );
 
-    // add composit primary key
+    // add composite primary key
     await queryRunner.createPrimaryKey('user_role_map', ['user_id', 'role_id']);
 
     // created permission table
@@ -236,7 +236,7 @@ export class CreateInitialTables1724235882063 implements MigrationInterface {
       true,
     );
 
-    // add composit primary key
+    // add composite primary key
     await queryRunner.createPrimaryKey('role_permission_map', [
       'permission_id',
       'role_id',

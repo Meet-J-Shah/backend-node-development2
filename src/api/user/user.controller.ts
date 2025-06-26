@@ -27,7 +27,7 @@ import {
 } from '../../utils/global/dto/global.dto';
 import {
   UserBodyReqDto,
-  UserParamReqDto,
+  PrimaryKeysUserDto,
   UserBodyUpdateReqDto,
   DeleteUserBodyReqDto,
 } from './dto/user.dto';
@@ -82,7 +82,7 @@ export class UserController {
   @HttpCode(HttpStatus.OK)
   @PermissionDecorator(userPermissionConstant.ADMIN_USER_FIND_ONE)
   async findOne(
-    @Param() userParamReqDto: UserParamReqDto,
+    @Param() userParamReqDto: PrimaryKeysUserDto,
   ): Promise<ControllerResDto<User>> {
     const { userId } = userParamReqDto;
     const serviceResponse: User = await this.userService.findOne(userId);
@@ -97,7 +97,7 @@ export class UserController {
   @PermissionDecorator(userPermissionConstant.ADMIN_USER_UPDATE)
   async update(
     @AdminAuthDecorator() adminAuth: any,
-    @Param() userParamReq: UserParamReqDto,
+    @Param() userParamReq: PrimaryKeysUserDto,
     @Body() userBodyReq: UserBodyUpdateReqDto<Role>,
   ): Promise<ControllerResDto<Role>> {
     const { userId } = userParamReq;
@@ -119,7 +119,7 @@ export class UserController {
   @HttpCode(HttpStatus.OK)
   @PermissionDecorator(userPermissionConstant.ADMIN_USER_HARD_DELETE)
   async hardDelete(
-    @Param() userParamReq: UserParamReqDto,
+    @Param() userParamReq: PrimaryKeysUserDto,
   ): Promise<ControllerResDto<{ isDeleted: boolean }>> {
     const { userId } = userParamReq;
     const isDeleted: boolean = await this.userService.delete(userId);
@@ -137,7 +137,7 @@ export class UserController {
   @PermissionDecorator(userPermissionConstant.ADMIN_USER_SOFT_DELETE)
   async softDelete(
     @AdminAuthDecorator() adminAuth: any,
-    @Param() userParamReq: UserParamReqDto,
+    @Param() userParamReq: PrimaryKeysUserDto,
   ): Promise<ControllerResDto<{ isDeleted: boolean }>> {
     const { userId } = userParamReq;
     const updateUserBodyReq: DeleteUserBodyReqDto = {
@@ -162,7 +162,7 @@ export class UserController {
   @PermissionDecorator(userPermissionConstant.ADMIN_USER_ROLLBACK)
   async rollback(
     @AdminAuthDecorator() adminAuth: any,
-    @Param() deleteUserParamReq: UserParamReqDto,
+    @Param() deleteUserParamReq: PrimaryKeysUserDto,
   ): Promise<ControllerResDto<Role>> {
     const { userId } = deleteUserParamReq;
     const updateRoleBodyReq: DeleteUserBodyReqDto = {

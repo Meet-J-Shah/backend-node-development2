@@ -1,78 +1,234 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="200" alt="Nest Logo" /></a>
-</p>
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
 
-## Description
+# 🚀 NestJS Auto-CRUD Generator
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+A powerful **NestJS CRUD code generator** using EJS templates and TypeORM. It automatically generates complete backend modules including entities, services, controllers, DTOs, and migrations based on configuration input.
 
-## Installation
+---
+
+## 📦 Features
+
+- ✅ NestJS modules with:
+  - `Entity`, `Service`, `Controller`, `DTO`, `Migration`
+- ✅ Advanced TypeORM support:
+  - UUID / composite primary keys
+  - Soft deletes, timestamps
+  - Role-based auditing: `createdBy`, `updatedBy`, `deletedBy`
+  - OneToOne, OneToMany, ManyToOne, ManyToMany with full `JoinColumn`/`JoinTable`
+- ✅ Configurable via JSON or code
+- ✅ Auto-migration generation and execution
+- ✅ EJS templating system for full control
+- ✅ Enum generation and relation tracking
+- ✅ Custom field names, lengths, nullable, unique, default
+
+---
+
+## 🪰 Installation
 
 ```bash
-$ yarn install
+npm install
+npm install -D ejs ejs-lint
 ```
 
-## Running the app
+---
+
+## ▶️ Usage
+
+### 1. Start Dev Server
 
 ```bash
-# development
-$ yarn run start
-
-# watch mode
-$ yarn run start:dev
-
-# production mode
-$ yarn run start:prod
+npm run start:dev
 ```
 
-## Test
+### 2. Run the Generator
+
+If using Bull queue processor or API:
+
+```ts
+// Example: Trigger inside a controller or CLI
+this.generateProcessor.handleGenerate({
+  name: 'Pizza',
+  primaryFields: [
+    { name: 'id', dtype: 'uuid', type: 'string' }
+  ],
+  fields: [
+    { name: 'name', type: 'string', dtype: 'varchar', nullable: false },
+    { name: 'size', enum: ['SMALL', 'MEDIUM', 'LARGE'], dtype: 'enum' }
+  ],
+  relations: [
+    {
+      name: 'owner',
+      type: 'ManyToOne',
+      target: 'User',
+      joinColumn: { name: 'owner_id', referencedColumnName: 'id' }
+    }
+  ],
+  creationConfig: {
+    withTimestamps: true,
+    withSoftDelete: true,
+    operator: true
+  }
+});
+```
+
+> Generated module will be placed at `src/api/pizza/`
+
+---
+
+## ⚙️ CLI Generator Usage (optional)
+
+If you support CLI, add a script like:
 
 ```bash
-# unit tests
-$ yarn run test
-
-# e2e tests
-$ yarn run test:e2e
-
-# test coverage
-$ yarn run test:cov
+# ./scripts/generate.ts
+ts-node src/api/generator/generate.cli.ts --name=Pizza
 ```
 
-## Support
+Then run:
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+```bash
+npm run generate Pizza
+```
 
-## Stay in touch
+Or define this in `package.json`:
 
-- Author - [Kamil Myśliwiec](https://kamilmysliwiec.com)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+```json
+"scripts": {
+  "generate": "ts-node src/api/generator/generate.cli.ts"
+}
+```
 
-## License
+---
 
-Nest is [MIT licensed](LICENSE).
+## 🧹 EJS Template Structure
 
-## Seeder Related Information
+All templates live in:
 
-When we create seeder file at that time please add timestamp in front of the file name
-e.g. 1724135554772-role.seeder.ts
+```
+src/api/generator/templates/module/
+```
+
+### Entity (`module.entity.ejs`)
+
+Supports:
+
+- Single/composite primary keys
+- UUID detection
+- Auto JoinColumns/JoinTables
+- Cascade/delete/update behaviors
+- Enum support
+
+```ejs
+<% if (field.relation) { %>
+  @ManyToOne(() => <%= field.relation.target %>)
+  @JoinColumn({ name: '<%= field.relation.joinColumn.name %>' })
+  <%= field.name %>: <%= field.relation.target %>;
+<% } else { %>
+  @Column({ name: '<%= snakeCase(field.name) %>', type: '<%= field.dtype %>' })
+  <%= field.name %>: <%= field.type %>;
+<% } %>
+```
+
+---
+
+## 📀 Migrations
+
+Generated in:
+
+```
+src/api/<module>/migrations/
+```
+
+Run them via:
+
+```bash
+npm run migration:generate
+npm run migration:run
+```
+
+Or programmatically with `DataSource.runMigrations()`.
+
+---
+
+## 🧪 Linting EJS Templates
+
+Install EJS lint:
+
+```bash
+npm install -g ejs-lint
+```
+
+Run lint:
+
+```bash
+ejs-lint src/api/generator/templates/module/entities/module.entity.ejs
+```
+
+To debug inside template:
+
+```ejs
+<%- JSON.stringify(myObject, null, 2) %>
+```
+
+---
+
+## 👤 Role & Permission Support
+
+```ts
+@ManyToOne(() => User)
+@JoinColumn({ name: 'created_by' })
+createdBy: User;
+
+@ManyToMany(() => Role)
+@JoinTable({ name: 'user_roles' })
+roles: Role[];
+```
+
+---
+
+## 💡 Example Output
+
+### Entity Example (Auto-Generated)
+
+```ts
+@Entity()
+export class Pizza {
+  @PrimaryColumn({ type: 'char', length: 36, default: () => 'UUID()' })
+  id: string;
+
+  @Column({ type: 'varchar', length: 255 })
+  name: string;
+
+  @Column({ type: 'enum', enum: ['SMALL', 'MEDIUM', 'LARGE'] })
+  size: 'SMALL' | 'MEDIUM' | 'LARGE';
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
+}
+```
+
+---
+
+## 🛠️ Built With
+
+- [NestJS](https://nestjs.com)
+- [TypeORM](https://typeorm.io)
+- [EJS Templates](https://ejs.co)
+- [BullMQ](https://docs.bullmq.io/)
+- [Class-validator](https://github.com/typestack/class-validator)
+
+
+
+---
+
+## 👨‍💻 Author
+
+**Meet Shah**\
+[GitHub](https://github.com/meetshah-dev) | [LinkedIn](https://linkedin.com)
+
+---
+

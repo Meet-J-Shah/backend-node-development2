@@ -3,33 +3,56 @@ import {
     Injectable,
     BadRequestException,
     InternalServerErrorException,
+    NotFoundException,
   } from '@nestjs/common';
   import { InjectRepository } from '@nestjs/typeorm';
   import { Repository, In, Not,FindOptionsWhere } from 'typeorm';
   
   import { GlobalService } from '../../utils/global/global.service';
   import { <%= entityName %> } from './entities/<%= entityFileName %>.entity';
-  import {
-    PaginationResDto,
-    ServiceResDto,
-    TypeOrmDeleteResult,
-  } from '../../utils/global/dto/global.dto';
-  import {
-    <%= entityName %>FullBodyReqDto,
+import {
+  PaginationResDto,
+  ServiceResDto,
+  TypeOrmDeleteResult,
+} from '../../utils/global/dto/global.dto';
+import {
+  PrimaryKeys<%= className %>Dto, 
+  Create<%= entityName %>BodyReqDto,
+  UpdateAndDelete<%= className %>BodyReqDto
+} from './dto/<%= entityFileName %>.dto';
+import { ModelService } from '../../utils/model/model.service';
+import { DeleteRollBackDto } from '../../utils/model/model.dto';
+import { CustomLogger } from 'src/utils/logger/logger.service';
+import {plainToInstance} from 'class-transformer';
+<% if(creationConfig.operator) {%>
+  import { User } from '../user/entities/user.entity';
+<% } %>
+<%
+  const importedRelations = new Set();
+%>
+import { syncManyToManyRelation } from '../../utils/relation-utils';
+<% fields.forEach(field => { %>
+  <% if (field.relation && field.relation.type === 'ManyToMany'  && !importedRelations.has(field.relation.target)) { 
+       const relationFile = field.relation.target.toLowerCase();
+       const relatedClass= field.relation.target[0].toUpperCase() + field.relation.target.slice(1);
+       importedRelations.add(field.relation.target);
+  %>
+    import {  MultiplePrimaryKeys<%=relatedClass %>Dto } from "../<%= relationFile %>/dto/<%= relationFile %>.dto";
+    import { <%= field.relation.target %> } from "../<%= relationFile %>/entities/<%= relationFile %>.entity";
+  <% } %>
+<% }) %>
 
-    Create<%= entityName %>BodyReqDto,
-    Update<%= entityName %>BodyReqDto,
-    UpdateAndDelete<%= className %>BodyReqDto
-  } from './dto/<%= entityFileName %>.dto';
-  import { ModelService } from '../../utils/model/model.service';
-  import { DeleteRollBackDto } from '../../utils/model/model.dto';
-  import { CustomLogger } from 'src/utils/logger/logger.service';
   
+
   @Injectable()
   export class <%= entityName %>Service {
     constructor(
       @InjectRepository(<%= entityName %>)
       private <%= entityVar %>Repository: Repository<<%= entityName %>>,
+      <% importedRelations.forEach(entity => { %>
+        @InjectRepository(<%= entity %>)
+        private <%= entity.toLowerCase() %>Repository: Repository<<%= entity %>>,
+      <% }) %>
       private globalService: GlobalService,
       private modelService: ModelService,
       private readonly customLogger: CustomLogger,
@@ -58,11 +81,19 @@ import {
   
     async create(
       createDto:Create<%= entityName %>BodyReqDto,
+      <% if(creationConfig.operator) {%>
+        createdByUser: User,
+      <% } %>
+      
     ): Promise<<%= entityName %>> {
       
   
       const createEntity: <%= entityName %> = this.<%= entityVar %>Repository.create({
         ...createDto,
+        <% if(creationConfig.operator) {%>
+        createdBy: createdByUser,
+        updatedBy: createdByUser,
+        <% } %>
       });
       const saveEntity: <%= entityName %> = await this.<%= entityVar %>Repository.save(createEntity);
       if (!saveEntity) {
@@ -71,10 +102,20 @@ import {
       return this.modelService.removeUserBy(saveEntity);
     }
   
-    async findOne(id: string): Promise<<%= entityName %>> {
+    async findOne(primaryKeyFields:PrimaryKeys<%= className %>Dto,): Promise<<%= entityName %>> {
+        const metadata = this.<%= entityVar %>Repository.metadata;
+        const allRelations = metadata.relations.map((rel) => rel.propertyName);
       const data = await this.<%= entityVar %>Repository.findOne({
-        where: { id },
-        relations: { <% if (hasRoleRelation) { %>roles: true<% } %> },
+        where: { 
+          <% if (primaryFields) { %>          
+            <% primaryFields.forEach(element => { %>
+            <%= element.name %>:primaryKeyFields.<%= element.name %>,
+          <% }) %>
+          <% } else { %>
+            id: primaryKeyFields.id
+          <% } %>
+      },
+      relations: allRelations,
       });
       if (!data) throw new BadRequestException('<%= entityName %> not found');
       return data;
@@ -83,33 +124,126 @@ import {
   
     async update(
       updateDto: UpdateAndDelete<%= className %>BodyReqDto,
-      id: string,
+      primaryKeyFields: PrimaryKeys<%= className %>Dto, 
+        <% if(creationConfig.operator) {%>
+          updatedByUser: User,
+        <% } %>
+        <% if (creationConfig.withSoftDelete) { %>
       isRollback = false,
+      <% } %>
     ): Promise<<%= entityName %>> {
+      <% if (creationConfig.withSoftDelete) { %>
       const rollbackObj: DeleteRollBackDto = isRollback ? { withDeleted: true } : {};
-  
+      <% } %>
       let entity = await this.<%= entityVar %>Repository.findOne({
-        where: { id },
+        where: { 
+                  <% if (primaryFields) { %>          
+                    <% primaryFields.forEach(element => { %>
+                    <%= element.name %>:primaryKeyFields.<%= element.name %>,
+                  <% }) %>
+                  <% } else { %>
+                    id: primaryKeyFields.id
+                  <% } %>
+              },
+              <% if (creationConfig.withSoftDelete) { %>
         ...rollbackObj,
+        <% } %>
       });
       if (!entity) throw new BadRequestException('<%= entityName %> not found');
   
-      entity = this.modelService.updateModelValue(entity, updateDto);
+      entity = this.modelService.updateModelValue(entity, updateDto, <% if(creationConfig.operator) {%>
+        updatedByUser,
+      <% } %>);
   
       return await this.<%= entityVar %>Repository.save(entity);
     }
   
-    async delete(id: string): Promise<boolean> {
+    async delete(primaryKeyFields:PrimaryKeys<%= className %>Dto,): Promise<boolean> {
       const data = await this.<%= entityVar %>Repository.findOne({
-        where: { id },
+        where: { 
+          <% if (primaryFields) { %>          
+            <% primaryFields.forEach(element => { %>
+            <%= element.name %>:primaryKeyFields.<%= element.name %>,
+          <% }) %>
+          <% } else { %>
+            id: primaryKeyFields.id
+          <% } %>
+      },
         withDeleted: true,
       });
   
       if (!data) throw new BadRequestException('<%= entityName %> not exists');
+      <% if (creationConfig.withSoftDelete) { %>
       if (!data.deletedAt) throw new BadRequestException('Only soft-deleted records can be deleted');
-  
-      const result = await this.<%= entityVar %>Repository.delete(id);
+      <% } %>
+      const result = await this.<%= entityVar %>Repository.delete(primaryKeyFields);
       return result.affected ? true : false;
     }
+
+    // logic for entries in join  tables
+    <% fields.forEach(field => { %>
+      
+      <% if (field.relation?.type==="ManyToMany") {%>
+        <% const relatedClass= field.relation.target[0].toUpperCase() + field.relation.target.slice(1); %>
+
+       
+        async modify<%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %>(connectIds:MultiplePrimaryKeys<%=relatedClass %>Dto,disconnectIds:MultiplePrimaryKeys<%=relatedClass %>Dto, primaryKeyFields:PrimaryKeys<%= className %>Dto,)
+        {
+          const <%= entityVar %> = await this.<%= entityVar %>Repository.findOne({
+            where: {
+              <% if (primaryFields) { %>          
+                <% primaryFields.forEach(element => { %>
+                  <%= element.name %>:primaryKeyFields.<%= element.name %>,
+                <% }) %>
+              <% } else { %>
+                id: primaryKeyFields.id
+              <% } %>
+            },
+            relations: ['<%= field.name %>', ], // Include the relation to modify it
+          });
+
+          if (!<%= entityVar %>) throw new NotFoundException('<%= entityName %> not found');
+
+
+          // get  the  entities for removing from relation
+          const whereConditions = disconnectIds.items as FindOptionsWhere<<%= field.relation.target %>>[];
+          let <%=field.relation.target.toLowerCase()%>sToRemove: <%- field.relation.target %>[]=[];
+          if (Array.isArray(whereConditions) && whereConditions.length > 0) {
+              <%=field.relation.target.toLowerCase()%>sToRemove = await this.<%=field.relation.target.toLowerCase()%>Repository.find({ 
+                where: whereConditions,});
+            }
+           
+
+          if ( <%=field.relation.target.toLowerCase()%>sToRemove?.length !== disconnectIds.items.length) {
+              throw new NotFoundException(' In the disconnectIds  some or all<%=field.relation.target%> not found');
+            }
+
+           // get  the  entities for adding to relation
+           const whereConditionsToAdd = connectIds.items as FindOptionsWhere<<%= field.relation.target %>>[];
+           let <%=field.relation.target.toLowerCase()%>sToAdd: <%- field.relation.target %>[]=[];
+           if (Array.isArray(whereConditionsToAdd) && whereConditionsToAdd.length > 0) 
+           {
+              <%=field.relation.target.toLowerCase()%>sToAdd = await this.<%=field.relation.target.toLowerCase()%>Repository.find({ 
+                where: whereConditionsToAdd,});
+            }
+
+          if ( <%=field.relation.target.toLowerCase()%>sToAdd?.length !== connectIds.items.length) {
+              throw new NotFoundException('In the connectIds  some or all <%=field.relation.target%> not found');
+            }
+              const <%=field.relation.target.toLowerCase()%>Meta = this.<%=field.relation.target.toLowerCase()%>Repository.metadata;
+
+              <%= entityVar %>['<%= field.name %>'] = syncManyToManyRelation(
+                <%= entityVar %>['<%= field.name %>'],
+                <%=field.relation.target.toLowerCase()%>sToAdd,
+                <%=field.relation.target.toLowerCase()%>sToRemove,
+                <%=field.relation.target.toLowerCase()%>Meta,
+            );
+
+          return await this.<%= entityVar %>Repository.save(<%= entityVar %>);
+        }
+      <% } %>
+    <% }) %>
+
+
   }
   
