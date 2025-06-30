@@ -36,9 +36,9 @@ export class GenerateController {
         field.subTypeOptions.parentType = field.Type;
       }
     }
-    dto.fields.slice(0, 7).forEach((f, i) => {
-      console.log(`Field ${i}`, f.subTypeOptions);
-    });
+    // dto.fields.slice(0, 7).forEach((f, i) => {
+    //   console.log(`Field ${i}`, f.subTypeOptions);
+    // });
     const dto2 = plainToInstance(GenerateDto, dto);
 
     const errors = await validate(dto2);
