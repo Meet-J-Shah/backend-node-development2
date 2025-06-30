@@ -37,7 +37,93 @@ export class GenerateProcessor {
         text: 'text',
         uuid: 'char(36)',
       };
+      for (const field of fields) {
+        if (field.Type === 'String') {
+          field.type = 'string';
+          field.dtype = field.subTypeOptions.subType || 'varchar';
+        } else if (field.Type === 'Text') {
+          field.type = 'string';
+          field.dtype = field.subTypeOptions.subType || 'text';
+        } else if (field.Type === 'Boolean') {
+          field.type = 'boolean';
+          field.dtype = field.subTypeOptions.subType || 'tinyint';
+        } else if (field.Type === 'Json') {
+          field.type = 'Record<string, any>';
+          field.dtype = field.subTypeOptions.subType || 'json';
+        } else if (field.Type === 'Enum') {
+          field.type = 'string';
+          field.dtype = field.subTypeOptions.subType || 'enum';
+          field.enum = field.subTypeOptions.values;
+        } else if (field.Type === 'Set') {
+          field.type = `string []`;
+          field.dtype = field.subTypeOptions.subType || 'simple-array';
+          field.enum = field.subTypeOptions.values;
+        } else if (field.Type === 'Uid') {
+          field.unique = true;
+          if (field.subTypeOptions.subType === 'uuid') {
+            field.dtype = 'char';
+            field.length = 36;
+          } else if (field.subTypeOptions.subType === 'bigint') {
+            field.dtype = 'bigint';
+            field.type = 'string';
+            field.length = field.subTypeOptions.length || 20;
+          } else if (field.subTypeOptions.subType === 'string') {
+            field.dtype = 'varchar';
+            field.type = 'string';
+            field.length = field.subTypeOptions.length || 20;
+          }
+        } else if (field.Type === 'DateTime') {
+          if (
+            ['date', 'datetime', 'timestamp'].includes(
+              field.subTypeOptions.subType,
+            )
+          ) {
+            field.type = 'Date';
+            field.dtype = field.subTypeOptions.subType || 'timestamp';
+          } else if (field.subTypeOptions.subType === 'time') {
+            field.type = 'string';
+            field.dtype = field.subTypeOptions.subType || 'time';
+          }
+        } else if (field.Type === 'Number') {
+          if (['bigint', 'decimal'].includes(field.subTypeOptions.subType)) {
+            field.type = 'string';
+            field.dtype = field.subTypeOptions.subType;
+          } else if (
+            ['smallint', 'int', 'float', 'double'].includes(
+              field.subTypeOptions.subType,
+            )
+          ) {
+            field.type = 'number';
+            field.dtype = field.subTypeOptions.subType || 'float';
+          }
+        } else if (field.Type === 'Relation') {
+        } else if (field.Type === 'Email') {
+          field.type = 'string';
+          field.dtype = 'varchar';
+          field.length = field.subTypeOptions.length || 255;
+        } else if (field.Type === 'Password') {
+          field.type = 'string';
+          field.dtype = 'varchar';
+          field.length = field.subTypeOptions.length || 255;
+        } else if (field.Type === 'PhoneNumber') {
+          field.type = 'string';
+          field.dtype = 'varchar';
+          field.length = field.subTypeOptions.length || 20;
+        }
 
+        if (
+          field.Type !== 'Relation' &&
+          field.subTypeOptions?.default !== undefined
+        ) {
+          field.default = field.subTypeOptions.default;
+        }
+        if (
+          field.Type !== 'Relation' &&
+          field.subTypeOptions?.length !== undefined
+        ) {
+          field.length = field.subTypeOptions.length;
+        }
+      }
       const templateData = {
         name,
         fields,
@@ -491,7 +577,12 @@ export class GenerateProcessor {
               );
               // const match = regex.exec(originalContent);
               const classMatch = originalContent.match(regex);
-
+              if (!classMatch) {
+                console.warn(
+                  `[injectProperties] Class match not found for ${classType}${moduleClass}BodyReqDto`,
+                );
+                return;
+              }
               const matchIndex = originalContent.indexOf(classMatch[0]);
               const openBraceIndex = originalContent.indexOf('{', matchIndex);
 
