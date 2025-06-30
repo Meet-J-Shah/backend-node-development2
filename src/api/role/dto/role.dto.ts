@@ -10,7 +10,6 @@ import {
   Matches,
   IsUUID,
   ValidateNested,
-  ArrayMinSize,
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
@@ -51,12 +50,11 @@ export class FindManyRoleQueryReq {
 export class PrimaryKeysRoleDto {
   @IsString()
   @IsNotEmpty()
-  roleId: string;
+  id: string;
 }
 
 export class MultiplePrimaryKeysRoleDto {
   @ValidateNested({ each: true })
-  @ArrayMinSize(2, { message: 'At least two permission keys are required' })
   @Type(() => PrimaryKeysRoleDto)
   items: PrimaryKeysRoleDto[];
 }

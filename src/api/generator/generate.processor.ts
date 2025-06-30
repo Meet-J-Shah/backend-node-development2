@@ -264,12 +264,14 @@ export class GenerateProcessor {
       for (const field of fields) {
         if (
           field.relation &&
-          (!field.relation.uniDirectional || field.relation.type == 'OneToMany')
+          (!field.relation.uniDirectional ||
+            field.relation.type == 'OneToMany' ||
+            field.relation.type == 'ManyToMany')
         ) {
           const oneToManyForeignKeys: string[] = [];
           const oneToManyForeignKeyTypes: string[] = [];
           const oneToManyForeignKeyDtypes: string[] = [];
-          // console.log('mj', field);
+
           const moduleName = field.relation.target.toLowerCase();
           const relationModulePath = join(
             appPath,
@@ -277,7 +279,7 @@ export class GenerateProcessor {
             'entities',
             `${moduleName}.entity.ts`,
           );
-          // console.log(relationModulePath);
+
           let content = fs.readFileSync(relationModulePath, 'utf-8');
 
           const importLine = `import { ${name} } from '../../${fileName}/entities/${fileName}.entity';\n`;
@@ -376,7 +378,7 @@ export class GenerateProcessor {
               }
               const type = primaryFields?.[0]?.type || 'string';
               oneToManyForeignKeyTypes.push(type);
-              oneToManyForeignKeys.push(inverseName);
+              oneToManyForeignKeys.push(inverseName + 'Id');
               oneToManyForeignKeyDtypes.push(
                 primaryFields?.[0]?.dtype || 'bigint',
               );
@@ -544,6 +546,299 @@ export class GenerateProcessor {
             injectProperties('Update');
 
             fs.writeFileSync(dtoPath, originalContent);
+          }
+
+          if (field.relation.type === 'ManyToMany') {
+            const modulePath = join(
+              appPath,
+              moduleName,
+              `${moduleName}.module.ts`,
+            );
+            let moduleContent = fs.readFileSync(modulePath, 'utf-8');
+
+            //  Add import new Module if not already present
+            if (!moduleContent.includes(`${className}`)) {
+              const importRegex = /^import\s.*?;$/gm;
+              const matches = [...moduleContent.matchAll(importRegex)];
+              const lastImport = matches[matches.length - 1];
+
+              if (lastImport) {
+                const indexAfterLastImport =
+                  lastImport.index! + lastImport[0].length;
+                const entityImport = `import { ${className} } from '../${fileName}/entities/${fileName}.entity';\n`;
+                moduleContent =
+                  moduleContent.slice(0, indexAfterLastImport) +
+                  `\n${entityImport}` +
+                  moduleContent.slice(indexAfterLastImport);
+              } else {
+                // fallback: no imports found
+                const entityImport = `import { ${className} } from '../${fileName}/entities/${fileName}.entity';\n\n`;
+                moduleContent = entityImport + moduleContent;
+              }
+            }
+
+            // Add new Entity to forFeature
+            moduleContent = moduleContent.replace(
+              /TypeOrmModule\.forFeature\(\[\s*([^\]]*)\]/,
+              (match, p1) => {
+                if (p1.includes(`${className}`)) return match; // already added
+                return `TypeOrmModule.forFeature([${p1.trim() ? p1.trim() + ', ' : ''}${className}]`;
+              },
+            );
+
+            // Write back the module file
+            fs.writeFileSync(modulePath, moduleContent, 'utf-8');
+
+            const controllerPath = join(
+              appPath,
+              moduleName,
+              `${moduleName}.controller.ts`,
+            );
+
+            const methodToAdd = `
+                @Post('modify${field.name.charAt(0).toUpperCase() + field.name.slice(1)}')
+                @HttpCode(HttpStatus.OK)
+                @PermissionDecorator(${moduleName}PermissionsConstant.ADMIN_${moduleName.toUpperCase()}_CREATE)
+                async modify${field.name.charAt(0).toUpperCase() + field.name.slice(1)}(
+                  @Body('connectIds') connectIds: MultiplePrimaryKeys${className}Dto,
+                  @Body('disconnectIds') disconnectIds: MultiplePrimaryKeys${className}Dto,
+                  @Query() primaryKeyDto: PrimaryKeys${moduleName.charAt(0).toUpperCase() + moduleName.slice(1)}Dto,
+                ): Promise<ControllerResDto<{ isAdded: boolean }>> {
+                  const result = await this.${moduleName}Service.modify${field.name.charAt(0).toUpperCase() + field.name.slice(1)}(
+                    connectIds,
+                    disconnectIds,
+                    primaryKeyDto,
+                  );
+                  return this.globalService.setControllerResponse(
+                    { isAdded: !!result },
+                    'Many ${field.name} modified successfully.',
+                  );
+                }
+              `;
+
+            // Read file
+            let controllerContent = fs.readFileSync(controllerPath, 'utf-8');
+
+            //  Add import new Module if not already present
+            if (
+              !controllerContent.includes(`MultiplePrimaryKeys${className}Dto`)
+            ) {
+              const entityPrimaryKeyDtoImport = `import {MultiplePrimaryKeys${className}Dto } from '../${fileName}/dto/${fileName}.dto';\n`;
+
+              // Find all import statements
+              const importRegex = /^import\s.*?;$/gm;
+              const matches = [...controllerContent.matchAll(importRegex)];
+
+              if (matches.length === 0) {
+                // No import statements, add to top
+                controllerContent =
+                  `${entityPrimaryKeyDtoImport}\n` + controllerContent;
+              } else {
+                // Insert after the last import
+                const lastImport = matches[matches.length - 1];
+                const indexAfterLastImport =
+                  lastImport.index! + lastImport[0].length;
+
+                controllerContent =
+                  controllerContent.slice(0, indexAfterLastImport) +
+                  `\n${entityPrimaryKeyDtoImport}` +
+                  controllerContent.slice(indexAfterLastImport);
+              }
+            }
+            // Check if method already exists
+            if (
+              controllerContent.includes(
+                `modify${field.name.charAt(0).toUpperCase() + field.name.slice(1)}`,
+              )
+            ) {
+              console.log(' Method already exists. Skipping...');
+            }
+
+            // Find last closing brace of the controller class
+            const classEndIndex = controllerContent.lastIndexOf('}');
+
+            if (classEndIndex === -1) {
+              console.error(
+                ' Could not find closing brace of controller class.',
+              );
+            }
+
+            // Insert method before last closing brace
+            const updatedContent =
+              controllerContent.slice(0, classEndIndex) +
+              `\n${methodToAdd}\n` +
+              controllerContent.slice(classEndIndex);
+
+            // Write back to file
+            fs.writeFileSync(controllerPath, updatedContent, 'utf-8');
+
+            const serviceToAdd = `
+           
+                async modify${field.name.charAt(0).toUpperCase() + field.name.slice(1)}(
+                  connectIds: MultiplePrimaryKeys${className}Dto,
+                  disconnectIds: MultiplePrimaryKeys${className}Dto,
+                  primaryKeyFields:PrimaryKeys${moduleName.charAt(0).toUpperCase() + moduleName.slice(1)}Dto,
+                ) {
+                  const where${moduleName.charAt(0).toUpperCase() + moduleName.slice(1)}Conditions = primaryKeyFields as unknown as FindOptionsWhere<${moduleName.charAt(0).toUpperCase() + moduleName.slice(1)}>[];
+                  const ${moduleName} = await this.${moduleName}Repository.findOne({
+                    where: where${moduleName.charAt(0).toUpperCase() + moduleName.slice(1)}Conditions,
+                    relations: ['${className.toLowerCase() + field.name.charAt(0).toUpperCase() + field.name.slice(1)}'], 
+                  });
+
+                  if (!${moduleName}) throw new NotFoundException('${moduleName} not found');
+
+                  // get  the  entities for removing from relation
+                  const whereConditions = disconnectIds.items as FindOptionsWhere<${className}>[];
+                  let ${className.toLowerCase()}sToRemove: ${className}[] = [];
+                  if (Array.isArray(whereConditions) && whereConditions.length > 0) {
+                    ${className.toLowerCase()}sToRemove = await this.${className.toLowerCase()}Repository.find({
+                      where: whereConditions,
+                    });
+                  }
+
+                  if (${className.toLowerCase()}sToRemove?.length !== disconnectIds.items.length) {
+                    throw new NotFoundException(
+                      ' In the disconnectIds  some or all ${className} not found',
+                    );
+                  }
+
+                  // get  the  entities for adding to relation
+                  const whereConditionsToAdd = connectIds.items as FindOptionsWhere<${className}>[];
+                  let ${className.toLowerCase()}sToAdd: ${className}[] = [];
+                  if (
+                    Array.isArray(whereConditionsToAdd) &&
+                    whereConditionsToAdd.length > 0
+                  ) {
+                    ${className.toLowerCase()}sToAdd = await this.${className.toLowerCase()}Repository.find({
+                      where: whereConditionsToAdd,
+                    });
+                  }
+
+                  if (${className.toLowerCase()}sToAdd?.length !== connectIds.items.length) {
+                    throw new NotFoundException(
+                      'In the connectIds  some or all ${className} not found',
+                    );
+                  }
+                  const ${className.toLowerCase()}Meta = this.${className.toLowerCase()}Repository.metadata;
+
+                  ${moduleName}['${className.toLowerCase() + field.name.charAt(0).toUpperCase() + field.name.slice(1)}'] = syncManyToManyRelation(
+                    ${moduleName}['${className.toLowerCase() + field.name.charAt(0).toUpperCase() + field.name.slice(1)}'],
+                    ${className.toLowerCase()}sToAdd,
+                    ${className.toLowerCase()}sToRemove,
+                    ${className.toLowerCase()}Meta,
+                  );
+
+                  return await this.${moduleName}Repository.save(${moduleName});
+                } 
+          `;
+
+            const servicePath = join(
+              appPath,
+              moduleName,
+              `${moduleName}.service.ts`,
+            );
+
+            // Read file
+            let serviceContent = fs.readFileSync(servicePath, 'utf-8');
+
+            let importContent = ``;
+
+            if (
+              !serviceContent.includes(`MultiplePrimaryKeys${className}Dto`)
+            ) {
+              const entityMultiplePrimaryKeyDtoImport = `import {MultiplePrimaryKeys${className}Dto } from '../${fileName}/dto/${fileName}.dto';\n`;
+
+              importContent = importContent + entityMultiplePrimaryKeyDtoImport;
+            }
+            if (
+              !serviceContent.includes(
+                `PrimaryKeys${moduleName.charAt(0).toUpperCase() + moduleName.slice(1)}Dto`,
+              )
+            ) {
+              const entityPrimaryKeyDtoImport = `import {PrimaryKeys${moduleName.charAt(0).toUpperCase() + moduleName.slice(1)}Dto } from '../${moduleName}/dto/${moduleName}.dto';\n`;
+
+              importContent = importContent + entityPrimaryKeyDtoImport;
+            }
+            if (!serviceContent.includes(`syncManyToManyRelation`)) {
+              const syncManyToManyRelationImport = `import {syncManyToManyRelation} from '../../utils/relation-utils';\n`;
+
+              importContent = importContent + syncManyToManyRelationImport;
+            }
+            if (!serviceContent.includes('NotFoundException')) {
+              const notFoundExceptionImport = `import {NotFoundException} from '@nestjs/common';\n`;
+
+              importContent = importContent + notFoundExceptionImport;
+            }
+            if (!serviceContent.includes(`${className}`)) {
+              const entityImport = `import { ${className} } from '../${fileName}/entities/${fileName}.entity';\n`;
+
+              importContent = importContent + entityImport;
+            }
+            if (
+              !serviceContent.includes(`MultiplePrimaryKeys${className}Dto`) ||
+              !serviceContent.includes(
+                `PrimaryKeys${moduleName.charAt(0).toUpperCase() + moduleName.slice(1)}Dto`,
+              ) ||
+              !serviceContent.includes(`syncManyToManyRelation`) ||
+              !serviceContent.includes('NotFoundException') ||
+              !serviceContent.includes(`${className}`)
+            ) {
+              // Find all import statements
+              const importRegex = /^import\s.*?;$/gm;
+              const matches = [...serviceContent.matchAll(importRegex)];
+
+              if (matches.length === 0) {
+                // No import statements, add to top
+                serviceContent = `${importContent}\n` + serviceContent;
+              } else {
+                // Insert after the last import
+                const lastImport = matches[matches.length - 1];
+                const indexAfterLastImport =
+                  lastImport.index! + lastImport[0].length;
+
+                serviceContent =
+                  serviceContent.slice(0, indexAfterLastImport) +
+                  `\n${importContent}` +
+                  serviceContent.slice(indexAfterLastImport);
+              }
+            }
+            const RepoLine = `@InjectRepository(${className})\n    private ${className.toLowerCase()}Repository: Repository<${className}>,\n`;
+
+            if (
+              !serviceContent.includes(`${className.toLowerCase()}Repository`)
+            ) {
+              serviceContent = serviceContent.replace(
+                /constructor\s*\(\s*([\s\S]*?)\)/,
+                (match, params) => {
+                  return `constructor(\n${RepoLine}${params})`;
+                },
+              );
+            }
+
+            if (
+              serviceContent.includes(
+                `modify${field.name.charAt(0).toUpperCase() + field.name.slice(1)}`,
+              )
+            ) {
+              console.log(' Method already exists. Skipping...');
+            }
+
+            // Find last closing brace of the controller class
+            const serviceClassEndIndex = serviceContent.lastIndexOf('}');
+
+            if (serviceClassEndIndex === -1) {
+              console.error(
+                ' Could not find closing brace of controller class.',
+              );
+            }
+
+            // Insert method before last closing brace
+            const updatedServiceContent =
+              serviceContent.slice(0, serviceClassEndIndex) +
+              `\n${serviceToAdd}\n` +
+              serviceContent.slice(serviceClassEndIndex);
+            // Write back to file
+            fs.writeFileSync(servicePath, updatedServiceContent, 'utf-8');
           }
         }
       }

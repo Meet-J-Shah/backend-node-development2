@@ -25,14 +25,10 @@ import {
 } from '../../utils/global/dto/global.dto';
 import {
   FindMany<%= className %>QueryReq,
-  <% if(primaryFields?.length>1) { %>
   PrimaryKeys<%= className %>Dto,
-  <% } else { %>
-    FindOne<%= className %>ParamReqDto,
-  <% } %>
   Create<%= className %>BodyReqDto,
   Update<%= className %>BodyReqDto,
-  <% if(creationConfig.softDelete) { %>
+  <% if(creationConfig.withSoftDelete) { %>
      Delete<%= className %>BodyReqDto,
   <% } %>
 } from './dto/<%= fileName %>.dto';
@@ -46,7 +42,7 @@ import {
        const relatedClass= field.relation.target[0].toUpperCase() + field.relation.target.slice(1);
        importedRelations.add(field.relation.target);
   %>
-import { PrimaryKeys<%= relatedClass %>Dto , MultiplePrimaryKeys<%=relatedClass %>Dto } from "../<%= relationFile %>/dto/<%= relationFile %>.dto";
+import {  MultiplePrimaryKeys<%=relatedClass %>Dto } from "../<%= relationFile %>/dto/<%= relationFile %>.dto";
   <% } %>
 <% }) %>
 
@@ -117,7 +113,7 @@ export class <%= className %>Controller {
     const isDeleted = await this.<%= camelName %>Service.delete(primaryKeyDto);
     return this.globalService.setControllerResponse({ isDeleted }, '<%= className %> deleted successfully.');
   }
-<% if(creationConfig.softDelete) { %>
+<% if(creationConfig.withSoftDelete) { %>
   @Delete('deleteOne')
   @HttpCode(HttpStatus.OK)
   @PermissionDecorator(<%= camelName %>PermissionsConstant.ADMIN_<%= constantName %>_SOFT_DELETE)
@@ -155,23 +151,16 @@ export class <%= className %>Controller {
 
     <% if (field.relation?.type==="ManyToMany") {%>
       <% const relatedClass= field.relation.target[0].toUpperCase() + field.relation.target.slice(1); %>
-      @Post('addOne<%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %>')
-      @HttpCode(HttpStatus.OK)
-      @PermissionDecorator(<%= camelName %>PermissionsConstant.ADMIN_<%= constantName %>_CREATE)
-      async addOne<%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %>(
-        @Body() bodyReq: PrimaryKeys<%= relatedClass %>Dto,
-        @Query() primaryKeyDto:PrimaryKeys<%= className %>Dto,): Promise<ControllerResDto<{ isAdded: boolean }>> {
-        const result = await this.<%= camelName %>Service.addOne<%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %>(bodyReq, primaryKeyDto,);
-        return this.globalService.setControllerResponse({ isAdded: !!result }, 'addOne <%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %> added successfully.');
-      }
+     
 
-      @Post('addMany<%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %>')
+      @Post('modify<%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %>')
       @HttpCode(HttpStatus.OK)
       @PermissionDecorator(<%= camelName %>PermissionsConstant.ADMIN_<%= constantName %>_CREATE)
       async addMany<%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %>(
-        @Body() bodyReq:  MultiplePrimaryKeys<%=relatedClass %>Dto,
+        @Body('connectIds') connectIds:  MultiplePrimaryKeys<%=relatedClass %>Dto,
+        @Body('disconnectIds') disconnectIds: MultiplePrimaryKeys<%=relatedClass %>Dto,
         @Query() primaryKeyDto:PrimaryKeys<%= className %>Dto,): Promise<ControllerResDto<{ isAdded: boolean }>> {
-        const result = await this.<%= camelName %>Service.addMany<%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %>(bodyReq, primaryKeyDto,);
+        const result = await this.<%= camelName %>Service.modify<%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %>(connectIds, disconnectIds,primaryKeyDto,);
         return this.globalService.setControllerResponse({ isAdded: !!result }, 'addMany <%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %> added successfully.');
       }
       <% } %>
