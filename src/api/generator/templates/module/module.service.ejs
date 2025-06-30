@@ -213,8 +213,8 @@ import { syncManyToManyRelation } from '../../utils/relation-utils';
                 where: whereConditions,});
             }
            
-
-          if ( <%=field.relation.target.toLowerCase()%>sToRemove?.length !== disconnectIds.items.length) {
+            const disconnectIdsLength= disconnectIds?.items?.length || 0;
+          if ( <%=field.relation.target.toLowerCase()%>sToRemove?.length !== disconnectIdsLength) {
               throw new NotFoundException(' In the disconnectIds  some or all<%=field.relation.target%> not found');
             }
 
@@ -226,8 +226,8 @@ import { syncManyToManyRelation } from '../../utils/relation-utils';
               <%=field.relation.target.toLowerCase()%>sToAdd = await this.<%=field.relation.target.toLowerCase()%>Repository.find({ 
                 where: whereConditionsToAdd,});
             }
-
-          if ( <%=field.relation.target.toLowerCase()%>sToAdd?.length !== connectIds.items.length) {
+            const connectIdsLength= connectIds?.items?.length || 0;
+          if ( <%=field.relation.target.toLowerCase()%>sToAdd?.length !== connectIdsLength) {
               throw new NotFoundException('In the connectIds  some or all <%=field.relation.target%> not found');
             }
               const <%=field.relation.target.toLowerCase()%>Meta = this.<%=field.relation.target.toLowerCase()%>Repository.metadata;
