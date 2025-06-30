@@ -4,7 +4,7 @@ import { Permission } from '../../api/permission/entities/permission.entity';
 import { Role } from '../../api/role/entities/role.entity';
 import { <%= camelName %>PermissionsConstant } from '../../api/<%= fileName %>/constants/permission.constant';
 
-export default class <%= className %> implements Seeder {
+export default class <%= className %>Seeder implements Seeder {
   public async run(factory: Factory, dataSource: DataSource): Promise<void> {
     const permissionRepo = dataSource.getRepository(Permission);
     const roleRepo = dataSource.getRepository(Role);

@@ -452,11 +452,16 @@ export class GenerateProcessor {
                 field.relation.joinColumn?.referencedColumnName ===
                   primaryFields?.[0]?.name
               ) {
-                joinColumnBlock = `{ name: '${field.relation.joinColumn?.name || dbTableName + '_id'}', referencedColumnName: '${primaryFields?.[0]?.name || 'id'}' }`;
+                joinColumnBlock = `{ name: '${field.relation.joinColumn?.name || dbTableName + '_' + snakeCase(primaryFields?.[0]?.name || 'id')}',
+                 referencedColumnName: '${primaryFields?.[0]?.name || 'id'}' }`;
               } else {
                 let nameBlock = ``;
 
-                nameBlock = `name: '${field.relation.joinColumn?.name || dbTableName + '_id'}',`;
+                console.log(
+                  `name: '${field.relation.joinColumn?.name || dbTableName + '_' + snakeCase(primaryFields?.[0]?.name || 'id')}',`,
+                  'colName2',
+                );
+                nameBlock = `name: '${field.relation.joinColumn?.name || dbTableName + '_' + snakeCase(primaryFields?.[0]?.name || 'id')}',`;
 
                 joinColumnBlock = ` { ${nameBlock}
                     referencedColumnName: '${primaryFields?.[0]?.name || 'id'}',
@@ -470,7 +475,7 @@ export class GenerateProcessor {
               );
               propertyBlock = `@ManyToOne(() => ${name}, (${fileName}) => ${fileName}.${field.name} ${options.length ? `, {\n  ${options.join(',\n  ')}\n}` : ''})
               @JoinColumn( ${joinColumnBlock} ) ${inverseName}: ${name};
-              @Column({ name: '${field.relation.joinColumn?.name || dbTableName + '_id'}', type: ${typeBlock}, nullable: true })
+              @Column({ name: '${field.relation.joinColumn?.name || dbTableName + '_' + snakeCase(primaryFields?.[0]?.name || 'id')}', type: ${typeBlock}, nullable: true })
               ${inverseName}Id?: ${type};`;
             }
           } else if (field.relation.type == 'ManyToOne') {
@@ -942,7 +947,7 @@ export class GenerateProcessor {
         },
       );
       execSync('npm run seed:config');
-      execSync('npm run seed:run');
+      execSync(`npm run seed:run -- -- seed=${className}Seeder`);
 
       console.log('Job processed successfully:', job.id);
       await job.moveToCompleted('done', true);

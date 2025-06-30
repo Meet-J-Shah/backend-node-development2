@@ -186,9 +186,9 @@ export class <%= name %> {
   <% } else { %>
     @Column({
       <% if (field.type) { %>type: '<%= field.dtype %>',<% } %>
-      <% if (field.type==='enum' && field.enum) { %>enum: <%- JSON.stringify(field.enum) %>,<% } %>
+      <% if (field.dtype==='enum' && field.enum) { %>enum: <%- JSON.stringify(field.enum) %>,<% } %>
       <% if (field.dbName) { %>name: '<%= field.dbName %>',<% } else{ %>name: '<%= snakeCase(field.name) %>' <% } %>,
-      <% if (field.length || field.type==='varchar') { %>length: <%= field.length || 255 %>,<% } %>
+      <% if (field.length &&( field.dtype==='char' || field.dtype==='varchar')) { %>length: <%= field.length || 255 %>,<% } %>
       <% if(field.dtype==='decimal') { %>
         <% if (field.subTypeOptions.m) { %>precision: <%= field.subTypeOptions.m %>,<% } %>
         <% if (field.subTypeOptions.d) { %>scale: <%= field.subTypeOptions.d %>,<% } %>
