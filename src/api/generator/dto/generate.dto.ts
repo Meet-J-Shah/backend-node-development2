@@ -457,6 +457,12 @@ class IndicesDto {
   @IsString({ each: true })
   indicesFields: string[];
 
+  @IsDefined({ message: 'indicesFieldsEntity must be defined' })
+  @ArrayMinSize(1)
+  @IsArray()
+  @IsString({ each: true })
+  indicesFieldsEntity: string[];
+
   @IsOptional()
   @IsBoolean()
   unique?: boolean;

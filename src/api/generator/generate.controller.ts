@@ -43,12 +43,15 @@ export class GenerateController {
 
     // check for indices
     const allNames = [];
+    const allNamesOfEntites = [];
     if (dto.primaryFields) {
       for (const primaryField of dto.primaryFields ?? []) {
         allNames.push(primaryField.dbName || snakeCase(primaryField.name));
+        allNamesOfEntites.push(primaryField.name);
       }
     } else {
       allNames.push('id');
+      allNamesOfEntites.push('id');
     }
     for (const field of dto.fields ?? []) {
       if (field.Type === 'Relation') {
@@ -59,9 +62,11 @@ export class GenerateController {
           allNames.push(
             field.relation.joinColumn?.name || snakeCase(field.name) + '_id',
           );
+          allNamesOfEntites.push(field.name + 'Id');
         }
       } else {
         allNames.push(field.dbName || snakeCase(field.name));
+        allNamesOfEntites.push(field.name);
       }
     }
 
@@ -69,11 +74,22 @@ export class GenerateController {
       const invalid = index.indicesFields.filter(
         (field) => !allNames.includes(field),
       );
+
       if (invalid.length > 0) {
         throw new BadRequestException(
           `Invalid index fields: ${invalid.join(', ')}. Allowed values are: ${allNames.join(', ')}`,
         );
       }
+    }
+
+    for (const Index of dto.indices ?? []) {
+      Index.indicesFieldsEntity = [];
+      Index.indicesFields.forEach((element) => {
+        const position = allNames.findIndex((name) => name === element);
+        if (position !== -1) {
+          Index.indicesFieldsEntity.push(allNamesOfEntites[position]);
+        }
+      });
     }
     const dto2 = plainToInstance(GenerateDto, dto);
 
