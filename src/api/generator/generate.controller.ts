@@ -3,6 +3,7 @@ import { GenerateService } from './generate.service';
 import { GenerateDto } from './dto/generate.dto';
 import { plainToInstance } from 'class-transformer';
 import { validate, ValidationError } from 'class-validator';
+import { snakeCase } from 'lodash';
 
 function extractErrors(errors: ValidationError[], parentPath = ''): string[] {
   const messages: string[] = [];
@@ -39,9 +40,47 @@ export class GenerateController {
     // dto.fields.slice(0, 7).forEach((f, i) => {
     //   console.log(`Field ${i}`, f.subTypeOptions);
     // });
+
+    // check for indices
+    const allNames = [];
+    if (dto.primaryFields) {
+      for (const primaryField of dto.primaryFields ?? []) {
+        allNames.push(primaryField.dbName || snakeCase(primaryField.name));
+      }
+    } else {
+      allNames.push('id');
+    }
+    for (const field of dto.fields ?? []) {
+      if (field.Type === 'Relation') {
+        if (
+          field.relation.type === 'OneToOne' ||
+          field.relation.type === 'ManyToOne'
+        ) {
+          allNames.push(
+            field.relation.joinColumn?.name || snakeCase(field.name) + '_id',
+          );
+        }
+      } else {
+        allNames.push(field.dbName || snakeCase(field.name));
+      }
+    }
+
+    for (const index of dto.indices ?? []) {
+      const invalid = index.indicesFields.filter(
+        (field) => !allNames.includes(field),
+      );
+      if (invalid.length > 0) {
+        throw new BadRequestException(
+          `Invalid index fields: ${invalid.join(', ')}. Allowed values are: ${allNames.join(', ')}`,
+        );
+      }
+    }
     const dto2 = plainToInstance(GenerateDto, dto);
 
-    const errors = await validate(dto2);
+    const errors = await validate(dto2, {
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    });
 
     if (errors.length > 0) {
       const flatMessages = extractErrors(errors);
