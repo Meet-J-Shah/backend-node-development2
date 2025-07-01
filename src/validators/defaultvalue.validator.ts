@@ -9,6 +9,10 @@ import {
   isInt,
   isISO8601,
 } from 'class-validator';
+import {
+  DynamicPasswordValidator,
+  // IsDynamicPassword,
+} from './passwordVail.validator';
 
 @ValidatorConstraint({ name: 'IsValidDefaultValidator', async: false })
 export class IsValidDefaultConstraint implements ValidatorConstraintInterface {
@@ -96,9 +100,14 @@ export class IsValidDefaultConstraint implements ValidatorConstraintInterface {
     }
 
     // Password (basic string check, complex rules handled by other validator)
-    if (subType === 'password') {
-      return typeof value === 'string';
-    }
+    const validator = new DynamicPasswordValidator();
+    return validator.validate(value, {
+      value,
+      targetName: 'default',
+      object: obj,
+      property: 'default',
+      constraints: [],
+    });
 
     // Default not supported for unknown subType
     return false;

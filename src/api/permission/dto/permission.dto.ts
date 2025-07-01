@@ -1,4 +1,10 @@
-import { IsInt, IsNotEmpty, IsString, ValidateNested } from 'class-validator';
+import {
+  IsInt,
+  IsNotEmpty,
+  IsString,
+  Length,
+  ValidateNested,
+} from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 
 export class FindManyPermissionQueryReq {
@@ -21,4 +27,33 @@ export class MultiplePrimaryKeysPermissionDto {
   @ValidateNested({ each: true })
   @Type(() => PrimaryKeysPermissionDto)
   items: PrimaryKeysPermissionDto[];
+}
+
+export class CreatePermissionBodyReqDto {
+  @IsString()
+  @IsNotEmpty()
+  @Length(1, 100)
+  module: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @Length(1, 100)
+  action: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @Length(1, 200)
+  slug: string;
+}
+
+export class UpdatePermissionBodyReqDto {
+  @IsString()
+  @IsNotEmpty()
+  @Length(1, 100)
+  module?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @Length(1, 100)
+  action?: string;
 }

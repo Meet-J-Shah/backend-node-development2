@@ -7,39 +7,56 @@ import {
 @ValidatorConstraint({ name: 'DynamicPasswordValidator', async: false })
 export class DynamicPasswordValidator implements ValidatorConstraintInterface {
   validate(value: string, args: ValidationArguments): boolean {
-    const obj = args.object as any;
+    const options = args.constraints[0] || {};
+    const min = options.minLength ?? 8;
+    const max = options.maxLength ?? 15;
+    const numeric = options.Numeric !== false;
+    const special = options.specialCharaters !== false;
 
     if (typeof value !== 'string') return false;
-
-    const min = obj.minLength ?? 8;
-    const max = obj.maxLength ?? 15;
     if (value.length < min || value.length > max) return false;
 
-    // Always required
     const lowercase = /[a-z]/.test(value);
     const uppercase = /[A-Z]/.test(value);
-
     if (!lowercase || !uppercase) return false;
-
-    // Optional checks
-    if (obj.Numeric !== false && !/\d/.test(value)) return false;
-    if (obj.specialCharaters !== false && !/[@$!%*#?&]/.test(value))
-      return false;
+    if (numeric && !/\d/.test(value)) return false;
+    if (special && !/[@$!%*#?&]/.test(value)) return false;
 
     return true;
   }
 
   defaultMessage(args: ValidationArguments): string {
-    const obj = args.object as any;
+    const options = args.constraints[0] || {};
     const parts = [
-      `between ${obj.minLength ?? 8}-${obj.maxLength ?? 15} characters`,
+      `between ${options.minLength ?? 8}-${options.maxLength ?? 15} characters`,
       `one lowercase`,
       `one uppercase`,
     ];
-
-    if (obj.Numeric !== false) parts.push('one number');
-    if (obj.specialCharaters !== false) parts.push('one special character');
-
+    if (options.Numeric !== false) parts.push('one number');
+    if (options.specialCharaters !== false) parts.push('one special character');
     return `Password must contain ${parts.join(', ')}`;
   }
+}
+
+import { registerDecorator, ValidationOptions } from 'class-validator';
+
+export function IsDynamicPassword(
+  options?: {
+    minLength?: number;
+    maxLength?: number;
+    Numeric?: boolean;
+    specialCharaters?: boolean;
+  },
+  validationOptions?: ValidationOptions,
+) {
+  return function (object: object, propertyName: string) {
+    registerDecorator({
+      name: 'IsDynamicPassword',
+      target: object.constructor,
+      propertyName,
+      options: validationOptions,
+      constraints: [options],
+      validator: DynamicPasswordValidator,
+    });
+  };
 }

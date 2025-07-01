@@ -67,6 +67,10 @@ export class Create<%= name %>Table<%= timestamp %> implements MigrationInterfac
           <% } else if (field.dtype === 'uuid') { %>
             type: "char",
             length: "36",
+          <% }else if(field.dtype==='simple-array'){ %>
+            type: "varchar",
+            length: "255",
+
           <% } else { %>
           type: "<%= field.dtype ||  typeMap[field.type] || 'varchar' %>",
           <% if(field.default) { %>
@@ -79,7 +83,7 @@ export class Create<%= name %>Table<%= timestamp %> implements MigrationInterfac
             <% } %> 
           <% } %>
           <% }  %>
-          <% if (field.length || field.dtype==='varchar' || !field.dtype) { %>length: '<%= field.length || 255 %>',<% } %>
+          <% if (field.length && (field.dtype==='varchar' || !field.dtype)) { %>length: '<%= field.length || 255 %>',<% } %>
           <% if (field.nullable !== undefined) { %>isNullable: <%= field.nullable %>,<% } %>
           <% if (field.unique) { %>isUnique: true,<% } %>
         },
