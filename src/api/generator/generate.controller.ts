@@ -1,10 +1,23 @@
-import { Controller, Post, Body, BadRequestException } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  BadRequestException,
+  UseGuards,
+} from '@nestjs/common';
 import { GenerateService } from './generate.service';
 import { GenerateDto } from './dto/generate.dto';
 import { plainToInstance } from 'class-transformer';
 import { validate, ValidationError } from 'class-validator';
 import { snakeCase } from 'lodash';
-import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
+import { AdminAuthGuard } from '../../guards/adminAuth.guard';
 
 function extractErrors(errors: ValidationError[], parentPath = ''): string[] {
   const messages: string[] = [];
@@ -29,6 +42,8 @@ function extractErrors(errors: ValidationError[], parentPath = ''): string[] {
 }
 @ApiTags('Generator')
 @Controller({ path: 'admin/generate', version: '1' })
+@UseGuards(AdminAuthGuard)
+@ApiBearerAuth('access-token')
 export class GenerateController {
   constructor(private readonly generateService: GenerateService) {}
   @ApiBody({

@@ -12,6 +12,15 @@ import {
   HttpStatus,
   ParseIntPipe,
 } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiQuery,
+  ApiParam,
+  ApiBody,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 
 import { AdminAuthDecorator } from '../../decorators/adminAuth.decorator';
 import { PermissionDecorator } from '../../decorators/permission.decorator';
@@ -32,6 +41,8 @@ import {
   DeleteUserBodyReqDto,
 } from './dto/user.dto';
 
+@ApiTags('default - Admin: Users')
+@ApiBearerAuth('access-token')
 @Controller({ path: 'admin/users', version: '1' })
 @UseGuards(AdminAuthGuard)
 export class UserController {
@@ -46,6 +57,10 @@ export class UserController {
   @Get()
   @HttpCode(HttpStatus.OK)
   @PermissionDecorator(userPermissionConstant.ADMIN_USER_FIND_ALL)
+  @ApiOperation({ summary: 'Get all users' })
+  @ApiQuery({ name: 'page', required: true, type: Number })
+  @ApiQuery({ name: 'limit', required: true, type: Number })
+  @ApiResponse({ status: 200, description: 'List of users', type: [User] })
   async findMany(
     @Query('page', ParseIntPipe) page: number,
     @Query('limit', ParseIntPipe) limit: number,
@@ -61,6 +76,9 @@ export class UserController {
   @Post()
   @HttpCode(HttpStatus.OK)
   @PermissionDecorator(userPermissionConstant.ADMIN_USER_CREATE)
+  @ApiOperation({ summary: 'Create a new user' })
+  @ApiBody({ type: UserBodyReqDto })
+  @ApiResponse({ status: 200, description: 'User created', type: User })
   async create(
     @AdminAuthDecorator() adminAuth: any,
     @Body() userBodyReq: UserBodyReqDto<Role>,
@@ -81,6 +99,9 @@ export class UserController {
   @Get(':userId')
   @HttpCode(HttpStatus.OK)
   @PermissionDecorator(userPermissionConstant.ADMIN_USER_FIND_ONE)
+  @ApiOperation({ summary: 'Get a user by ID' })
+  @ApiParam({ name: 'userId', description: 'User ID', type: String })
+  @ApiResponse({ status: 200, description: 'User data', type: User })
   async findOne(
     @Param() userParamReqDto: PrimaryKeysUserDto,
   ): Promise<ControllerResDto<User>> {
@@ -95,6 +116,10 @@ export class UserController {
   @Put(':userId')
   @HttpCode(HttpStatus.OK)
   @PermissionDecorator(userPermissionConstant.ADMIN_USER_UPDATE)
+  @ApiOperation({ summary: 'Update a user by ID' })
+  @ApiParam({ name: 'userId', description: 'User ID', type: String })
+  @ApiBody({ type: UserBodyUpdateReqDto })
+  @ApiResponse({ status: 200, description: 'User updated', type: User })
   async update(
     @AdminAuthDecorator() adminAuth: any,
     @Param() userParamReq: PrimaryKeysUserDto,
@@ -118,6 +143,9 @@ export class UserController {
   @Delete(':userId/permanent')
   @HttpCode(HttpStatus.OK)
   @PermissionDecorator(userPermissionConstant.ADMIN_USER_HARD_DELETE)
+  @ApiOperation({ summary: 'Permanently delete a user by ID' })
+  @ApiParam({ name: 'userId', description: 'User ID', type: String })
+  @ApiResponse({ status: 200, description: 'User permanently deleted' })
   async hardDelete(
     @Param() userParamReq: PrimaryKeysUserDto,
   ): Promise<ControllerResDto<{ isDeleted: boolean }>> {
@@ -135,6 +163,9 @@ export class UserController {
   @Delete(':userId')
   @HttpCode(HttpStatus.OK)
   @PermissionDecorator(userPermissionConstant.ADMIN_USER_SOFT_DELETE)
+  @ApiOperation({ summary: 'Soft delete a user by ID' })
+  @ApiParam({ name: 'userId', description: 'User ID', type: String })
+  @ApiResponse({ status: 200, description: 'User soft deleted' })
   async softDelete(
     @AdminAuthDecorator() adminAuth: any,
     @Param() userParamReq: PrimaryKeysUserDto,
@@ -160,6 +191,13 @@ export class UserController {
   @Put(':userId/rollback')
   @HttpCode(HttpStatus.OK)
   @PermissionDecorator(userPermissionConstant.ADMIN_USER_ROLLBACK)
+  @ApiOperation({ summary: 'Rollback soft-deleted user by ID' })
+  @ApiParam({ name: 'userId', description: 'User ID', type: String })
+  @ApiResponse({
+    status: 200,
+    description: 'Soft delete rolled back',
+    type: User,
+  })
   async rollback(
     @AdminAuthDecorator() adminAuth: any,
     @Param() deleteUserParamReq: PrimaryKeysUserDto,

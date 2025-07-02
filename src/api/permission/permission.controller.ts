@@ -9,6 +9,13 @@ import {
   Post,
   Body,
 } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiQuery,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 
 import { PermissionDecorator } from '../../decorators/permission.decorator';
 import { AdminAuthGuard } from '../../guards/adminAuth.guard';
@@ -25,6 +32,8 @@ import {
   PrimaryKeysPermissionDto,
 } from './dto/permission.dto';
 
+@ApiTags('default - Admin: Permissions')
+@ApiBearerAuth('access-token')
 @Controller({ path: 'admin/permissions', version: '1' })
 @UseGuards(AdminAuthGuard)
 export class AdminPermissionController {
@@ -39,6 +48,26 @@ export class AdminPermissionController {
   @Get()
   @HttpCode(HttpStatus.OK)
   @PermissionDecorator(permissionPermissionsConstant.ADMIN_PERMISSION_FIND_ALL)
+  @ApiOperation({ summary: 'Find all permissions with pagination' })
+  @ApiQuery({
+    name: 'page',
+    required: true,
+    type: Number,
+    example: 1,
+    description: 'Page number for pagination',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: true,
+    type: Number,
+    example: 10,
+    description: 'Number of records per page',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'List of permissions returned successfully',
+    type: ControllerResDto, // You can use a generic wrapper type here if available
+  })
   async findMany(
     @Query() findManyRoleQueryReq: FindManyPermissionQueryReq,
   ): Promise<ControllerResDto<Permission[]>> {

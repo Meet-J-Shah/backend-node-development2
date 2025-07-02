@@ -11,6 +11,12 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 
 import { PermissionDecorator } from '../../decorators/permission.decorator';
 import { AdminAuthDecorator } from '../../decorators/adminAuth.decorator';
@@ -32,6 +38,8 @@ import {
   UpdateRolePermissionBodyReqDto,
 } from './dto/role.dto';
 
+@ApiTags('default - Admin:Roles')
+@ApiBearerAuth('access-token')
 @Controller({ path: 'admin/roles', version: '1' })
 @UseGuards(AdminAuthGuard)
 export class RoleController {
@@ -46,6 +54,8 @@ export class RoleController {
   @Get()
   @HttpCode(HttpStatus.OK)
   @PermissionDecorator(rolePermissionsConstant.ADMIN_ROLE_FIND_ALL)
+  @ApiOperation({ summary: 'Find many roles' })
+  @ApiResponse({ status: 200, description: 'List of roles returned' })
   async findMany(
     @Query() findManyRoleQueryReq: FindManyRoleQueryReq,
   ): Promise<ControllerResDto<Role[]>> {
@@ -61,6 +71,8 @@ export class RoleController {
   @Get(':id')
   @HttpCode(HttpStatus.OK)
   @PermissionDecorator(rolePermissionsConstant.ADMIN_ROLE_FIND_ONE)
+  @ApiOperation({ summary: 'Find one role by ID' })
+  @ApiResponse({ status: 200, description: 'Single role returned' })
   async findOne(
     @Param() finOneRoleParamReqDto: PrimaryKeysRoleDto,
   ): Promise<ControllerResDto<Role>> {
@@ -77,6 +89,8 @@ export class RoleController {
   @Post()
   @HttpCode(HttpStatus.OK)
   @PermissionDecorator(rolePermissionsConstant.ADMIN_ROLE_CREATE)
+  @ApiOperation({ summary: 'Create new role' })
+  @ApiResponse({ status: 200, description: 'Role created successfully' })
   async create(
     @AdminAuthDecorator() adminAuth: any,
     @Body() createRoleBodyReq: CreateRoleBodyReqDto,
@@ -97,6 +111,8 @@ export class RoleController {
   @Put(':roleId')
   @HttpCode(HttpStatus.OK)
   @PermissionDecorator(rolePermissionsConstant.ADMIN_ROLE_UPDATE)
+  @ApiOperation({ summary: 'Update role by ID' })
+  @ApiResponse({ status: 200, description: 'Role updated successfully' })
   async update(
     @AdminAuthDecorator() adminAuth: any,
     @Param() updateRoleParamReq: PrimaryKeysRoleDto,
@@ -120,6 +136,8 @@ export class RoleController {
   @Delete(':roleId')
   @HttpCode(HttpStatus.OK)
   @PermissionDecorator(rolePermissionsConstant.ADMIN_ROLE_SOFT_DELETE)
+  @ApiOperation({ summary: 'Soft delete role by ID' })
+  @ApiResponse({ status: 200, description: 'Role soft deleted' })
   async softDelete(
     @AdminAuthDecorator() adminAuth: any,
     @Param() deleteRoleParamReq: PrimaryKeysRoleDto,
@@ -145,6 +163,8 @@ export class RoleController {
   @Put(':roleId/rollback')
   @HttpCode(HttpStatus.OK)
   @PermissionDecorator(rolePermissionsConstant.ADMIN_ROLE_ROLLBACK)
+  @ApiOperation({ summary: 'Rollback soft deleted role by ID' })
+  @ApiResponse({ status: 200, description: 'Soft delete rollback successful' })
   async rollback(
     @AdminAuthDecorator() adminAuth: any,
     @Param() deleteRoleParamReq: PrimaryKeysRoleDto,
@@ -171,6 +191,8 @@ export class RoleController {
   @Delete(':roleId/permanent')
   @HttpCode(HttpStatus.OK)
   @PermissionDecorator(rolePermissionsConstant.ADMIN_ROLE_HARD_DELETE)
+  @ApiOperation({ summary: 'Hard delete role by ID' })
+  @ApiResponse({ status: 200, description: 'Role permanently deleted' })
   async hardDelete(
     @Param() deleteRoleParamReq: PrimaryKeysRoleDto,
   ): Promise<ControllerResDto<{ isDeleted: boolean }>> {
@@ -188,6 +210,8 @@ export class RoleController {
   @Put(':roleId/permissions')
   @HttpCode(HttpStatus.OK)
   @PermissionDecorator(rolePermissionsConstant.ADMIN_ROLE_UPDATE_PERMISSION)
+  @ApiOperation({ summary: 'Update permissions for role' })
+  @ApiResponse({ status: 200, description: 'Role permissions updated' })
   async updatePermission(
     @AdminAuthDecorator() adminAuth: any,
     @Param() updateRoleParamReq: PrimaryKeysRoleDto,
