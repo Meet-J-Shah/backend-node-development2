@@ -14,7 +14,7 @@ export class GenerateProcessor {
     console.log('GenerateProcessor received job:', job.id, job.data);
 
     try {
-      const { name, fields, creationConfig, primaryFields } = job.data;
+      const { name, fields, creationConfig, primaryFields, indices } = job.data;
       const className = name.charAt(0).toUpperCase() + name.slice(1);
       const camelName = className.charAt(0).toLowerCase() + className.slice(1);
       const fileName = name.toLowerCase();
@@ -128,6 +128,7 @@ export class GenerateProcessor {
         name,
         fields,
         primaryFields,
+        indices,
         className,
         tableName,
         dbTableName,
@@ -150,6 +151,7 @@ export class GenerateProcessor {
         hasAuthModule: true,
         pluralize,
         snakeCase,
+        camelCase,
         // ...any more
       };
 

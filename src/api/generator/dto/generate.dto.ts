@@ -16,6 +16,7 @@ import {
   IsEmpty,
   ArrayUnique,
   ArrayNotEmpty,
+  ArrayMinSize,
   // Matches,
   // ArrayUnique,
   // ArrayNotEmpty,
@@ -94,7 +95,7 @@ class RelationDto {
   joinTable?: JoinTableOptionsDto;
 
   // Explicitly throw error when joinTable is defined for types != ManyToMany
-  @ValidateIf((o) => o.type !== 'ManyToMany' && !!o.joinTable)
+  @ValidateIf((o) => o.type !== 'ManyToMany' && o.joinTable)
   @IsEmpty({
     message:
       'joinTable must not be defined unless relation type is "ManyToMany"',
@@ -135,6 +136,8 @@ const allowedSubTypesMap = {
 };
 export class SubTypeOptionsDto {
   // Needed for conditional validation
+  @IsOptional()
+  @IsString()
   parentType?: string;
 
   @ValidateIf((o) => {
@@ -443,6 +446,28 @@ class CreationConfigDto {
   operator?: boolean;
 }
 
+class IndicesDto {
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @IsDefined({ message: 'indicesFields must be defined' })
+  @ArrayMinSize(1)
+  @IsArray()
+  @IsString({ each: true })
+  indicesFields: string[];
+
+  @IsDefined({ message: 'indicesFieldsEntity must be defined' })
+  @ArrayMinSize(1)
+  @IsArray()
+  @IsString({ each: true })
+  indicesFieldsEntity: string[];
+
+  @IsOptional()
+  @IsBoolean()
+  unique?: boolean;
+}
+
 export class GenerateDto {
   @IsString()
   name: string;
@@ -463,4 +488,11 @@ export class GenerateDto {
   @ValidateNested()
   @Type(() => CreationConfigDto)
   creationConfig?: CreationConfigDto;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMinSize(1)
+  @ValidateNested({ each: true })
+  @Type(() => IndicesDto)
+  indices?: IndicesDto[];
 }
