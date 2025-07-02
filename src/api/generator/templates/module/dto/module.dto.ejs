@@ -1,0 +1,437 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import {
+  IsNotEmpty,
+  IsDefined,
+  MaxLength,
+  IsString,
+  IsBoolean,
+  IsObject,
+  ArrayNotEmpty,
+  IsOptional,
+  IsArray,
+  IsInt,
+  IsIn,
+  Matches,
+  IsUUID,
+  ValidateNested,
+  IsEmail,
+  Min,
+  Max,
+  IsISO8601,
+  IsPhoneNumber,
+} from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import { IntersectionType } from '@nestjs/mapped-types';
+import { IsDynamicPassword } from '../../../validators/passwordVail.validator';
+
+  
+  export class FindMany<%= className %>QueryReq {
+    @IsInt()
+    @Transform(({ value }) => Number.parseInt(value))
+    page: number;
+  
+    @IsInt()
+    @Transform(({ value }) => Number.parseInt(value))
+    limit: number;
+  }
+  
+  
+  
+    export class PrimaryKeys<%= className %>Dto {
+      <%  if (primaryFields && primaryFields.length > 1) { %>
+        <% primaryFields.forEach(field => { %>
+            <% if (field.dtype === 'uuid') { %>
+              @IsUUID()
+            <% } else if ( field.dtype === 'int') { %>
+                @Type(() => Number)
+                @IsInt()
+            <% } else { %>
+                @IsString()
+                @Matches(/^\d+$/, { message: 'ID must be a string of digits' })
+            <% } %>
+              @IsNotEmpty()
+            <%= field.name %>: <%= field.tsType || field.type || 'string' %>;
+          <% }) %>
+      <% } else { %>
+
+        <% if (primaryFields && primaryFields.length === 1) { %>
+          <% if (primaryFields[0].dtype === 'uuid') { %>
+            @IsUUID()
+          <% } else if (primaryFields[0].dtype === 'int') { %>
+            @Type(() => Number)
+            @IsInt()
+          <% } else { %>
+            @IsString()
+              @Matches(/^\d+$/, { message: 'ID must be a string of digits' })
+          <% } %>
+          @IsNotEmpty()
+          <%= primaryFields[0].name %>: <%= primaryFields[0].tsType || primaryFields[0].type || 'string' %>;
+          <% } else { %>
+            @IsString()
+            @Matches(/^\d+$/, { message: 'ID must be a string of digits' })
+            @IsNotEmpty()
+            id: string;
+          <% } %>
+      <% } %>
+    }
+    export class MultiplePrimaryKeys<%=className %>Dto {
+      @ValidateNested({ each: true })
+      @Type(() => PrimaryKeys<%= className %>Dto)
+      items: PrimaryKeys<%= className %>Dto[];
+    }
+  export class Create<%= className %>BodyReqDto 
+    <%  if (primaryFields && primaryFields.length > 1) { %> 
+      extends  PrimaryKeys<%= className %>Dto
+    <% } %>
+  {
+    <% fields.forEach(field => { %>
+      <% if (field.apiProperty) { %>
+      @ApiProperty()
+      <% } %>
+    
+      <% if (field.relation) { %>
+        <% if (['OneToOne', 'ManyToOne'].includes(field.relation.type)) { %> 
+          @IsOptional()
+          @IsString()
+          <%= field.name %>Id?: string;
+        <% } else { %>
+          @IsOptional()
+          @IsArray()
+          @IsString({ each: true })
+          <%= pluralize.singular(field.name) %>Ids?: string[];
+        <% } %>
+    
+      <% } else { %>
+        <% if (field.Type === 'String' || field.Type==='Text') { %>
+          @IsString()
+   
+
+          <%  if(field.Type==='String') {%>
+              <% if (field.default) { %>
+              @Transform(({ value }) => value || <%=field.default%>)
+              <% } %>
+              @MaxLength(<%= field.length || 255 %>)
+          <% } else if (field.Type === 'Text') { %>
+              <% if (field.subTypeOptions.subType==='tinytext') { %>
+               @ MaxLength(<%= field.length || 255 %>)
+              <% }else if (field.subTypeOptions.subType==='text') { %>
+               @ MaxLength(<%= field.length || 65535 %>)
+              <%} else if (field.subTypeOptions.subType==='mediumtext') { %>
+                  @ MaxLength(<%= field.length ||16777215 %>) 
+              <% } else {%>
+                  @MaxLength(<%= field.length ||65535 %>)
+              <% } %>
+          <% } %>
+
+        <% } else if (field.Type === 'Boolean') { %>
+          <% if (field.default){ %>
+          @Transform(({ value }) => value || <%=field.default%>)
+          <% } %>
+          @IsBoolean()
+        <% } else if (field.Type === 'Json') { %>
+          @Transform(({ value }) => {
+            try {
+              return typeof value === 'string' ? JSON.parse(value) : value;
+            } catch {
+              return {};
+            }
+          })
+          @IsObject()
+        <% } else if (field.Type === 'Uid') { %>
+          <% if (field.subTypeOptions.subType==='uuid') { %>
+            @IsUUID() 
+          <% } else if (field.subTypeOptions.subType==='bigint') { %>
+            @IsString()
+            @Matches(/^\d+$/, { message: 'ID must be a string of digits' })
+          <% } else if (field.subTypeOptions.subType==='string') {%>
+            @IsString()
+          <% } %>
+        <% } else if (field.Type === 'DateTime') { %>
+          <% if (['date', 'datetime', 'timestamp'].includes(field.subTypeOptions.subType)) { %> 
+            <% if(field.default){ %>
+              @Transform(({ value }) => (value ? new Date(value) : undefined))
+            <% }else {%>
+              @Transform(({ value }) => value ?? new Date().toISOString())
+            <% } %>
+            @IsISO8601()
+          <% } else if(field.subTypeOptions.subType === 'time') { %>
+            @IsString()
+            <% if(field.default){ %>
+              @Transform(({ value }) => value ?? '00:00:00')
+            <% } %>
+            @Matches(/^([01]\d|2[0-3]):[0-5]\d:[0-5]\d$/, {
+              message: 'Time must be in HH:mm:ss format',
+            })
+          <% } %>
+        <% } else if (field.Type === 'Number') { %>
+          <% if (field.default) { %>
+            @Transform(({ value }) => value || <%=field.default%>)
+          <% } %>
+          <% if(field.subTypeOptions.subType === 'smallint') {%>
+            @IsInt()
+            @Min(-32768)
+            @Max(32767)
+          <% } else if (field.subTypeOptions.subType === 'int') { %>
+            @IsInt()
+            @Min(-2147483648)
+            @Max(2147483647)
+          <% } else if (field.subTypeOptions.subType === 'bigint') { %>
+            @IsString()
+            @Matches(/^-?\d+$/, { message: 'Must be a valid bigint string' })
+          <% } else if (field.subTypeOptions.subType === 'float'|| field.subTypeOptions.subType === 'double') { %>
+            @IsNumber({ maxDecimalPlaces: 8 }) 
+          <% } else if (field.subTypeOptions.subType === 'decimal') { %>
+            <%  const P=field.subTypeOptions.m||10; 
+                const S=field.subTypeOptions.d||2; 
+            %>
+            @IsString()
+            @Matches(/^\d{1,<%=P-S%>}(\.\d{1,<%=S%>})?$/, {
+              message: 'Must be a decimal with up to <%=P-S%> digits before and <%=S%> digits after the dot',
+            })
+          <% } %>
+          <% } else if (field.Type === 'Email') { %>
+            <% if (field.default) { %>
+              @Transform(({ value }) => value || "<%=field.default%>")
+            <% } %>
+            @IsEmail({}, { message: 'Invalid email address' })
+          <% } else if (field.Type === 'Password') { %>
+            <% if (field.default) { %>
+              @Transform(({ value }) => value || "<%=field.default%>")
+            <% } %>
+            @IsDynamicPassword({
+              minLength: <%= field.subTypeOptions.minLength || 6  %>,
+              maxLength: <%= field.subTypeOptions.maxLength || 20  %>,
+              Numeric: <%= field.subTypeOptions.Numeric ?? true  %>,
+              specialCharaters: <%= field.subTypeOptions.specialCharaters ?? true  %>,
+            })
+          <% } else if (field.Type === 'PhoneNumber') { %>
+            <% if (field.default) { %>
+              @Transform(({ value }) => value || "<%=field.default%>")
+            <% } %>
+            <% if(field.subTypeOptions.subType === 'localPhoneNumber') {%> 
+              @IsPhoneNumber('IN', { message: 'Invalid Indian phone number' })
+            <% } else if (field.subTypeOptions.subType === 'internationalPhoneNumber') { %>
+              @IsPhoneNumber(null, {
+                message: 'Phone number must be in valid international format (E.164)',
+              })
+            <% } %>
+          <% } %>
+
+  
+
+        <% if (field.nullable) { %>
+          @IsOptional()
+        <% } else { %>
+          @IsDefined()
+          @IsNotEmpty()
+          <% } %>  
+        <% if (field.enum) { %>
+            <% if(field.Type==='Enum') {%>
+              <% if (field.default){ %>
+                @Transform(({ value }) => value || "<%=field.default%>")
+                <% } %>
+            @IsIn(<%- JSON.stringify(field.enum) %>)
+            <%= field.name %><% if (field.nullable) { %>?<% } %>: <%- field.enum.map(v => `'${v}'`).join(' | ') %>;
+            <% } else if (field.Type === 'Set') { %>
+              <% if (field.default){ %>
+                @Transform(({ value }) => value ?? [<%- JSON.stringify(field.default) %>])
+              <% } %>
+              @IsArray()
+              @ArrayNotEmpty()
+              @IsIn(<%- JSON.stringify(field.enum) %>, {
+                each: true,
+              })
+              <%= field.name %><% if (field.nullable) { %>?<% } %>: (<%- field.enum.map(v => `'${v}'`).join(' | ') %>)[];
+            <% }%>
+
+        <% } else { %>
+              <%= field.name %> <% if (field.nullable) { %>?<% } %>: <%- field.tsType || field.type %>;
+        <% } %>          
+        
+      <% } %>  
+    <% }) %>
+      
+  }
+  
+  export class Update<%= className %>BodyReqDto {
+    <% fields.forEach(field => { %>
+      <% if (field.apiProperty) { %>
+      @ApiProperty()
+      <% } %>
+    
+      <% if (field.relation) { %>
+        <% if (['OneToOne', 'ManyToOne'].includes(field.relation.type)) { %> 
+          @IsOptional()
+          @IsString()
+          <%= field.name %>Id?: string;
+        <% } else { %>
+          @IsOptional()
+          @IsArray()
+          @IsString({ each: true })
+          <%= pluralize.singular(field.name) %>Ids?: string[];
+        <% } %>
+    
+      <% } else { %>
+        <% if (field.Type === 'String' || field.Type==='Text') { %>
+          @IsString()
+   
+
+          <%  if(field.Type==='String') {%>
+              <% if (field.default) { %>
+              @Transform(({ value }) => value || <%=field.default%>)
+              <% } %>
+              @MaxLength(<%= field.length || 255 %>)
+          <% } else if (field.Type === 'Text') { %>
+              <% if (field.subTypeOptions.subType==='tinytext') { %>
+               @ MaxLength(<%= field.length || 255 %>)
+              <% }else if (field.subTypeOptions.subType==='text') { %>
+               @ MaxLength(<%= field.length || 65535 %>)
+              <%} else if (field.subTypeOptions.subType==='mediumtext') { %>
+                  @ MaxLength(<%= field.length ||16777215 %>) 
+              <% } else {%>
+                  @MaxLength(<%= field.length ||65535 %>)
+              <% } %>
+          <% } %>
+
+        <% } else if (field.Type === 'Boolean') { %>
+          <% if (field.default){ %>
+          @Transform(({ value }) => value || <%=field.default%>)
+          <% } %>
+          @IsBoolean()
+        <% } else if (field.Type === 'Json') { %>
+          @Transform(({ value }) => {
+            try {
+              return typeof value === 'string' ? JSON.parse(value) : value;
+            } catch {
+              return {};
+            }
+          })
+          @IsObject()
+        <% } else if (field.Type === 'Uid') { %>
+          <% if (field.subTypeOptions.subType==='uuid') { %>
+            @IsUUID() 
+          <% } else if (field.subTypeOptions.subType==='bigint') { %>
+            @IsString()
+            @Matches(/^\d+$/, { message: 'ID must be a string of digits' })
+          <% } else if (field.subTypeOptions.subType==='string') {%>
+            @IsString()
+          <% } %>
+        <% } else if (field.Type === 'DateTime') { %>
+          <% if (['date', 'datetime', 'timestamp'].includes(field.subTypeOptions.subType)) { %> 
+            <% if(field.default){ %>
+              @Transform(({ value }) => (value ? new Date(value) : undefined))
+            <% }else {%>
+              @Transform(({ value }) => value ?? new Date().toISOString())
+            <% } %>
+            @IsISO8601()
+          <% } else if(field.subTypeOptions.subType === 'time') { %>
+            @IsString()
+            <% if(field.default){ %>
+              @Transform(({ value }) => value ?? '00:00:00')
+            <% } %>
+            @Matches(/^([01]\d|2[0-3]):[0-5]\d:[0-5]\d$/, {
+              message: 'Time must be in HH:mm:ss format',
+            })
+          <% } %>
+        <% } else if (field.Type === 'Number') { %>
+          <% if (field.default) { %>
+            @Transform(({ value }) => value || <%=field.default%>)
+          <% } %>
+          <% if(field.subTypeOptions.subType === 'smallint') {%>
+            @IsInt()
+            @Min(-32768)
+            @Max(32767)
+          <% } else if (field.subTypeOptions.subType === 'int') { %>
+            @IsInt()
+            @Min(-2147483648)
+            @Max(2147483647)
+          <% } else if (field.subTypeOptions.subType === 'bigint') { %>
+            @IsString()
+            @Matches(/^-?\d+$/, { message: 'Must be a valid bigint string' })
+          <% } else if (field.subTypeOptions.subType === 'float'|| field.subTypeOptions.subType === 'double') { %>
+            @IsNumber({ maxDecimalPlaces: 8 }) 
+          <% } else if (field.subTypeOptions.subType === 'decimal') { %>
+            <%  const P=field.subTypeOptions.m||10; 
+                const S=field.subTypeOptions.d||2; 
+            %>
+            @IsString()
+            @Matches(/^\d{1,<%=P-S%>}(\.\d{1,<%=S%>})?$/, {
+              message: 'Must be a decimal with up to <%=P-S%> digits before and <%=S%> digits after the dot',
+            })
+          <% } %>
+          <% } else if (field.Type === 'Email') { %>
+            <% if (field.default) { %>
+              @Transform(({ value }) => value || "<%=field.default%>")
+            <% } %>
+            @IsEmail({}, { message: 'Invalid email address' })
+          <% } else if (field.Type === 'Password') { %>
+            <% if (field.default) { %>
+              @Transform(({ value }) => value || "<%=field.default%>")
+            <% } %>
+            @IsDynamicPassword({
+              minLength: <%= field.subTypeOptions.minLength || 6  %>,
+              maxLength: <%= field.subTypeOptions.maxLength || 20  %>,
+              Numeric: <%= field.subTypeOptions.Numeric ?? true  %>,
+              specialCharaters: <%= field.subTypeOptions.specialCharaters ?? true  %>,
+            })
+          <% } else if (field.Type === 'PhoneNumber') { %>
+            <% if (field.default) { %>
+              @Transform(({ value }) => value || "<%=field.default%>")
+            <% } %>
+            <% if(field.subTypeOptions.subType === 'localPhoneNumber') {%> 
+              @IsPhoneNumber('IN', { message: 'Invalid Indian phone number' })
+            <% } else if (field.subTypeOptions.subType === 'internationalPhoneNumber') { %>
+              @IsPhoneNumber(null, {
+                message: 'Phone number must be in valid international format (E.164)',
+              })
+            <% } %>
+          <% } %>
+
+  
+
+          @IsOptional()
+         
+        <% if (field.enum) { %>
+            <% if(field.Type==='Enum') {%>
+              <% if (field.default){ %>
+                @Transform(({ value }) => value || "<%=field.default%>")
+                <% } %>
+            @IsIn(<%- JSON.stringify(field.enum) %>)
+            <%= field.name %>?: <%- field.enum.map(v => `'${v}'`).join(' | ') %>;
+            <% } else if (field.Type === 'Set') { %>
+              <% if (field.default){ %>
+                @Transform(({ value }) => value ?? [<%- JSON.stringify(field.default) %>])
+              <% } %>
+              @IsArray()
+              @ArrayNotEmpty()
+              @IsIn(<%- JSON.stringify(field.enum) %>, {
+                each: true,
+              })
+              <%= field.name %>?: (<%- field.enum.map(v => `'${v}'`).join(' | ') %>)[];
+            <% }%>
+
+        <% } else { %>
+              <%= field.name %>?: <%- field.tsType || field.type %>;
+        <% } %>          
+        
+      <% } %>  
+    <% }) %>
+
+
+
+  }
+  
+  <% if(creationConfig.withSoftDelete) {%>
+    export class Delete<%= className %>BodyReqDto {
+      @IsBoolean()
+      @IsOptional()
+      hasSoftDeleted?: boolean;
+    }
+  <% } %>
+
+  
+  export class UpdateAndDelete<%= className %>BodyReqDto extends IntersectionType(
+    Update<%= className %>BodyReqDto,
+    <% if(creationConfig.withSoftDelete) {%>Delete<%= className %>BodyReqDto,<% } %>
+  ) {}
+  

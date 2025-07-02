@@ -9,4 +9,4 @@ import { ModelModule } from './model/model.module';
   imports: [GlobalModule, BcryptModule, JwtTokenModule, ModelModule],
   exports: [GlobalModule, BcryptModule, JwtTokenModule, ModelModule],
 })
-export class UtilsModule { }
+export class UtilsModule {}

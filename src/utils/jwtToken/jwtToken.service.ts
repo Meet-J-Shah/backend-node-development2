@@ -54,7 +54,10 @@ export class JwtTokenService {
       return token;
       // return hashedPassword;
     } catch (error) {
-      this.customLogger.error('Error while generating JWT token::', error.stack);
+      this.customLogger.error(
+        'Error while generating JWT token::',
+        error.stack,
+      );
       throw new InternalServerErrorException(error);
     }
   }

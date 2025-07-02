@@ -3,7 +3,7 @@ import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class BcryptService {
-  constructor() { }
+  constructor() {}
   /**
    * BCRYPT UTIL: generate password
    */

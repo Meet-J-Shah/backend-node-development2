@@ -28,4 +28,4 @@ import { ApiModule } from './api/api.module';
     },
   ],
 })
-export class AppModule { }
+export class AppModule {}

@@ -65,7 +65,10 @@ export class ModelService {
       }
       return resData;
     } catch (error) {
-      this.customLogger.error('Error while removing fields from model::', error.stack);
+      this.customLogger.error(
+        'Error while removing fields from model::',
+        error.stack,
+      );
       throw new InternalServerErrorException(error);
     }
   }

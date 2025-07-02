@@ -15,7 +15,7 @@ export class AuthService {
     private userService: UserService,
     private jwtTokenService: JwtTokenService,
     private bcryptService: BcryptService,
-  ) { }
+  ) {}
 
   /**
    * admin login service
@@ -27,7 +27,7 @@ export class AuthService {
       true,
     );
     if (!user) {
-      throw new UnauthorizedException('Invalid Email or password.');
+      throw new UnauthorizedException('No User Found');
     }
     const isPasswordMatch: boolean = await this.bcryptService.comparePassword(
       password,

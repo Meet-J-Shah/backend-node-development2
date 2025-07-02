@@ -8,4 +8,4 @@ import { CustomLogger } from '../logger/logger.service';
   providers: [ModelService, CustomLogger],
   exports: [ModelService],
 })
-export class ModelModule { }
+export class ModelModule {}

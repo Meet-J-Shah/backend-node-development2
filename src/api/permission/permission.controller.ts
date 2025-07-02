@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import {
   UseGuards,
   Controller,
@@ -5,6 +6,8 @@ import {
   Query,
   HttpCode,
   HttpStatus,
+  Post,
+  Body,
 } from '@nestjs/common';
 
 import { PermissionDecorator } from '../../decorators/permission.decorator';
@@ -12,12 +15,15 @@ import { AdminAuthGuard } from '../../guards/adminAuth.guard';
 import { GlobalService } from '../../utils/global/global.service';
 import { PermissionService } from './permission.service';
 import { Permission } from './entities/permission.entity';
-import { permissionPermissionConstant } from './constants/permission.constant';
+import { permissionPermissionsConstant } from './constants/permission.constant';
 import {
   ControllerResDto,
   ServiceResDto,
 } from '../../utils/global/dto/global.dto';
-import { FindManyPermissionQueryReq } from './dto/permission.dto';
+import {
+  FindManyPermissionQueryReq,
+  PrimaryKeysPermissionDto,
+} from './dto/permission.dto';
 
 @Controller({ path: 'admin/permissions', version: '1' })
 @UseGuards(AdminAuthGuard)
@@ -32,7 +38,7 @@ export class AdminPermissionController {
    */
   @Get()
   @HttpCode(HttpStatus.OK)
-  @PermissionDecorator(permissionPermissionConstant.ADMIN_PERMISSION_FIND_ALL)
+  @PermissionDecorator(permissionPermissionsConstant.ADMIN_PERMISSION_FIND_ALL)
   async findMany(
     @Query() findManyRoleQueryReq: FindManyPermissionQueryReq,
   ): Promise<ControllerResDto<Permission[]>> {

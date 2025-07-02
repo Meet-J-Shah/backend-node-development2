@@ -8,8 +8,10 @@ import {
   IsBoolean,
   IsOptional,
   ArrayMinSize,
+  ValidateNested,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 
 export class UserBodyReqDto<T> {
   @IsEmail()
@@ -83,12 +85,17 @@ export class UserBodyUpdateReqDto<T> {
   hasSoftDeleted?: boolean;
 }
 
-export class UserParamReqDto {
+export class PrimaryKeysUserDto {
   @IsString()
   @IsNotEmpty()
   userId: string;
 }
 
+export class MultiplePrimaryKeysUserDto {
+  @ValidateNested({ each: true })
+  @Type(() => PrimaryKeysUserDto)
+  items: PrimaryKeysUserDto[];
+}
 export class UserWhereDto {
   id?: string;
   email?: string;

@@ -19,4 +19,4 @@ import { CustomLogger } from 'src/utils/logger/logger.service';
   controllers: [RoleController],
   providers: [RoleService, CustomLogger],
 })
-export class RoleModule { }
+export class RoleModule {}

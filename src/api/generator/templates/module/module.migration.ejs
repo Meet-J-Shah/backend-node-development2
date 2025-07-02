@@ -1,0 +1,422 @@
+import {   MigrationInterface,
+  QueryRunner,
+  Table,
+  TableColumn,
+  TableForeignKey } from "typeorm";
+
+
+export class Create<%= name %>Table<%= timestamp %> implements MigrationInterface {
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    <% const primaryKeys=[]; const primaryKeyTypes=[]; %>
+    await queryRunner.createTable(new Table({
+      name: "<%= dbTableName %>",
+      columns: [
+      <% if (primaryFields && primaryFields.length === 1) { %>
+        {
+          <% primaryKeys.push(primaryFields[0].dbName || snakeCase(primaryFields[0].name));  %>
+          name: '<%= primaryFields[0].dbName || snakeCase(primaryFields[0].name) %>',
+          <% if (primaryFields[0].dtype === "uuid") { %>
+            <%  primaryKeyTypes.push('char');%>
+            type: 'char',
+            length: '36',
+          <% } else { %>
+            type: '<%= primaryFields[0].dtype || "bigint" %>',
+            <%  primaryKeyTypes.push(primaryFields[0].dtype || 'bigint');%>
+          <% } %>
+          
+          isPrimary: true,
+          isGenerated: true,
+          generationStrategy: '<%= primaryFields[0].dtype === "uuid" ? "uuid" : "increment" %>',
+        },
+      <% } else if (primaryFields && primaryFields.length > 1) { %>
+        <% primaryFields.forEach((field, index) => { %>
+          {
+            <% primaryKeys.push( field.dbName || snakeCase(field.name));  %>
+            name: '<%= field.dbName || snakeCase(field.name) %>',
+            <% if (field.dtype === "uuid") { %>
+              <%  primaryKeyTypes.push('char');%>
+              type: 'char',
+              length: '36',
+            <% } else { %>
+              <%  primaryKeyTypes.push(field.dtype || 'bigint');%>
+              type: '<%= field.dtype || "bigint" %>',
+            <% } %> 
+            isPrimary: true<%= index < primaryFields.length - 1 ? ',' : '' %>
+          },
+        <% }); %>
+      <% } else { %>
+        {
+          <% primaryKeys.push('id'); %>
+          <%  primaryKeyTypes.push( 'bigint');%>
+          name: 'id',
+          type: 'bigint',
+          isPrimary: true,
+          isGenerated: true,
+          generationStrategy: 'increment',
+        },
+      <% } %>
+<% fields.forEach(field => { %>
+  <% if (!field.relation) { %>
+        {
+          <% if (field.dbName) { %>name: '<%= field.dbName %>',<% } else{ %>name: '<%= snakeCase(field.name) %>' <% } %>,
+          <% if (field.dtype === 'enum') { %>
+            type: "enum('<%- field.enum.join("','") %>')",
+            <% if(field.default) { %>
+              default: "'<%=field.default %>'",  
+            <% } %>
+          <% } else if (field.dtype === 'uuid') { %>
+            type: "char",
+            length: "36",
+          <% }else if(field.dtype==='simple-array'){ %>
+            type: "varchar",
+            length: "255",
+
+          <% } else { %>
+          type: "<%= field.dtype ||  typeMap[field.type] || 'varchar' %>",
+          <% if(field.default) { %>
+            <% if (typeof field.default === 'string') { %>
+              
+              default:"'<%- field.default.replace(/'/g, "\\'") %>'",
+            <% } else { %>
+              
+              default: <%- JSON.stringify(field.default) %>,
+            <% } %> 
+          <% } %>
+          <% }  %>
+          <% if (field.length && (field.dtype==='varchar' || !field.dtype)) { %>length: '<%= field.length || 255 %>',<% } %>
+          <% if (field.nullable !== undefined) { %>isNullable: <%= field.nullable %>,<% } %>
+          <% if (field.unique) { %>isUnique: true,<% } %>
+        },
+  <% } else { %>
+    <% if (['OneToOne', 'ManyToOne'].includes(field.relation.type)) { %>
+      { 
+        name: '<%= field.relation.joinColumn?.name ||  snakeCase(field.name)+'_id' %>', 
+        type: 'bigint', 
+        isNullable: true 
+      },
+    <% } %>
+  <% } %>
+<% }) %>
+      <% if (creationConfig?.withTimestamps) { %>
+        {
+          name: 'created_at',
+          type: 'timestamp',
+          default: 'CURRENT_TIMESTAMP',
+        },
+        {
+          name: 'updated_at',
+          type: 'timestamp',
+          default: 'CURRENT_TIMESTAMP',
+          onUpdate: 'CURRENT_TIMESTAMP',
+        },
+      <% } %>
+
+      <% if (creationConfig?.withSoftDelete) { %>
+        {
+          name: 'deleted_at',
+          type: 'timestamp',
+          isNullable: true,
+        },
+      <% } %>
+
+      <% if (creationConfig?.operator) { %>
+          {
+            name: 'created_by',
+            type: 'bigint',
+            isNullable: true,
+          },
+          {
+            name: 'updated_by',
+            type: 'bigint',
+            isNullable: true,
+          },
+        <% if (creationConfig.withSoftDelete) { %>
+          {
+            name: 'deleted_by',
+            type: 'bigint',
+            isNullable: true,
+          },
+        <% } %>
+      <% } %>
+      ],
+    }),true,);
+
+    // Foreign keys
+    await queryRunner.createForeignKeys('<%= dbTableName %>', [
+    <% if (creationConfig?.operator) { %>  
+       
+        new TableForeignKey({
+          columnNames: ['created_by'],
+          referencedTableName: 'user',
+          referencedColumnNames: ['id'],
+          onDelete: 'SET NULL',
+          onUpdate: 'CASCADE',
+        }),
+        new TableForeignKey({
+          columnNames: ['updated_by'],
+          referencedTableName: 'user',
+          referencedColumnNames: ['id'],
+          onDelete: 'SET NULL',
+          onUpdate: 'CASCADE',
+        }),
+      <% if (creationConfig.withSoftDelete) { %>
+        new TableForeignKey({
+          columnNames: ['deleted_by'],
+          referencedTableName: 'user',
+          referencedColumnNames: ['id'],
+          onDelete: 'SET NULL',
+          onUpdate: 'CASCADE',
+        }),
+      <% } %>
+    <% } %>
+    <% fields.forEach(field => { %>
+      <% if (field.relation) { %>
+        <% if (['OneToOne', 'ManyToOne'].includes(field.relation.type)) { %>
+          new TableForeignKey({
+            columnNames: ['<%= field.relation.joinColumn?.name ||  snakeCase(field.name)+'_id' %>'],
+            referencedTableName: '<%= field.relation.target.toLowerCase() %>',
+            referencedColumnNames: ['<%= field.relation.joinColumn?.referencedColumnName ||  'id' %>'],
+            onUpdate: '<%- field.relation.onUpdate ?? 'CASCADE'%>',
+            onDelete: '<%- field.relation.onDelete ?? 'SET NULL'%>',
+          }),
+        <% } %>
+      <% } %>
+    <% }) %>
+    ]);
+
+    // Join tables
+    <% fields.forEach(field => { %>
+      <% if (field.relation && field.relation.type === 'ManyToMany') { %>
+        await queryRunner.createTable(
+          new Table({
+            name:'<%= field.relation.joinTable?.name || name.toLowerCase() + "_" + field.relation.target.toLowerCase() + "_map"  %>',
+            <% const primaryTablefields=[]; const primaryDBTablefields=[]; %>
+            columns: [
+            <% if (field.relation.joinTable?.joinColumn) { %>
+                
+                  <% primaryDBTablefields.push(field.relation.joinTable.joinColumn.name); 
+                        if(primaryKeys.indexOf(field.relation.joinTable.joinColumn.referencedColumnName) !== -1 && primaryKeys.length === 1)
+                      {
+                        primaryTablefields.push(field.relation.joinTable.joinColumn.referencedColumnName);
+                      }
+                      else if (primaryKeys.indexOf(snakeCase(field.relation.joinTable.joinColumn.referencedColumnName)) !== -1 && primaryKeys.length === 1)
+                      {
+                        primaryTablefields.push(snakeCase(field.relation.joinTable.joinColumn.referencedColumnName));
+                      }
+                      else{
+                        primaryTablefields.push(...primaryKeys);
+                        if(primaryKeys.length>1){
+                          primaryDBTablefields.push(...primaryKeys.slice(1).map(item => `${dbTableName}_${item}`));
+                        }
+                      }
+                    %>
+
+                    <% primaryDBTablefields.forEach((primaryDbElement, index) => { %> 
+                      {
+                        name: '<%=primaryDbElement%>',
+                        type: '<%=primaryKeyTypes[index]%>',
+                        <% if (primaryKeyTypes[index]==='char') { %>
+                          length: '36',
+                        <% } %>
+                        isNullable: false,
+                        isPrimary: true,                 
+                      },
+                    <% }); %>
+              <% } else { %>
+                <% if (primaryFields && primaryFields.length === 1) { %>
+                  {
+                    <% const name2 = `${primaryFields[0].dbName || snakeCase(primaryFields[0].name)}`;
+                      primaryTablefields.push(name2); 
+                      primaryDBTablefields.push(`${dbTableName}_${name2}`);
+                    %>
+
+                    name: '<%= dbTableName %>_<%= primaryFields[0].dbName || snakeCase(primaryFields[0].name) %>',
+                    <% if (primaryFields[0].dtype === "uuid") { %>
+                      type: 'char',
+                      length: '36',
+                    <% } else { %>
+                      type: '<%= primaryFields[0].dtype || "bigint" %>',
+                    <% } %>
+                    isNullable: false,
+                    isPrimary: true,
+                  },
+                <% } else if (primaryFields && primaryFields.length > 1) { %>
+                  <% primaryFields.forEach((field, index) => { %>
+                    {
+                      <% const name2 = `${field.dbName || snakeCase(field.name)}`;
+                         primaryTablefields.push(`${field.dbName || snakeCase(field.name)}`); 
+                         primaryDBTablefields.push(`${dbTableName}_${name2}`);
+                      %>
+                      name: '<%= dbTableName %>_<%= field.dbName || snakeCase(field.name) %>',
+                      <% if (field.dtype === "uuid") { %>
+                        type: 'char',
+                        length: '36',
+                      <% } else { %>
+                        type: '<%= field.dtype || "bigint" %>',
+                      <% } %> 
+                      isNullable: false,isPrimary: true<%= index < primaryFields.length - 1 ? ',' : '' %>
+                    },
+                  <% }); %>
+                <% } else { %>
+                  {
+                    name: '<%= dbTableName %>_id',
+                    type: 'bigint',
+                    isPrimary: true,
+                    isNullable: false,
+                  },
+                <% } %>
+              <% } %>
+
+                {
+                  name: '<%= field.relation.joinTable?.inverseJoinColumn?.name || field.relation.target.toLowerCase() + '_id'%>',
+                  type: 'bigint',
+                  isPrimary: true,
+                  isNullable: false,
+                },
+
+            ],
+            foreignKeys: [
+              {
+                columnNames: [
+                <% if(primaryDBTablefields.length === 0 ) {%>
+                  '<%= dbTableName+"_id"%>'
+                  <% } else { %>
+                    <% primaryDBTablefields.forEach((name, index) => { %>'<%= name %>'<%= index < primaryDBTablefields.length - 1 ? ',' : '' %><% }) %>
+                  <% } %>
+                  
+
+                ],
+                referencedTableName: '<%= dbTableName %>',
+                referencedColumnNames: [
+                <% if(primaryDBTablefields.length === 0 ) {%>
+                  'id'
+                  <% } else { %>
+                    <% primaryTablefields.forEach((name, index) => { %>'<%= name %>'<%= index < primaryTablefields.length - 1 ? ',' : '' %> <% }) %>
+                  <% } %>
+                
+                ],
+                onDelete: '<%- field.relation.onDelete ?? 'CASCADE'%>',
+              },
+              {
+                columnNames: ['<%= field.relation.joinTable?.inverseJoinColumn?.name || field.relation.target.toLowerCase() + '_id'%>'],
+                referencedTableName: '<%=field.relation.target.toLowerCase()%>',
+                referencedColumnNames: ['<%=field.relation.joinTable?.inverseJoinColumn?.referencedColumnName||'id'%>'],             
+                onDelete: '<%- field.relation.onDelete ?? 'CASCADE'%>',
+              },
+            ],
+          }),true,
+        );
+  
+      <% } %>
+  
+      <% if (field.relation && field.relation.type === 'OneToMany') { %>
+        <% const primaryTablefields=[]; const primaryDBTablefields=[]; %>
+        await queryRunner.addColumns('<%=field.relation.target.toLowerCase()%>', 
+        [
+         <% if (field.relation.joinColumn) { %>
+
+
+              <% primaryDBTablefields.push(field.relation.joinColumn.name); 
+                 if(primaryKeys.indexOf(field.relation.joinColumn.referencedColumnName) !== -1 && primaryKeys.length === 1)
+                {
+                  primaryTablefields.push(field.relation.joinColumn.referencedColumnName);
+                }
+                else if (primaryKeys.indexOf(snakeCase(field.relation.joinColumn.referencedColumnName)) !== -1 && primaryKeys.length === 1)
+                {
+                  primaryTablefields.push(snakeCase(field.relation.joinColumn.referencedColumnName));
+                }
+                else{
+                  primaryTablefields.push(...primaryKeys);
+                  if(primaryKeys.length>1){
+                    primaryDBTablefields.push(...primaryKeys.slice(1).map(item => `${dbTableName}_${item}`));
+                  }
+                }
+              %>
+            <% primaryDBTablefields.forEach((primaryDbElement, index) => { %> 
+            new TableColumn(  {
+                name: '<%=primaryDbElement%>',
+                type: '<%=primaryKeyTypes[index]%>',
+                <% if (primaryKeyTypes[index]==='char') { %>
+                  length: '36',
+                <% } %>
+                isNullable: true,
+            <%= index < primaryDBTablefields.length - 1 ? ',' : '' %>
+              }),
+            <%});%>
+          <% } else { %>
+            <% if (primaryFields && primaryFields.length === 1) { %>
+              new TableColumn(  {
+                <% const name2 = `${primaryFields[0].dbName || snakeCase(primaryFields[0].name)}`;
+                  primaryTablefields.push(name2); 
+                  primaryDBTablefields.push(`${dbTableName}_${name2}`);
+                %>
+
+                name: '<%= dbTableName %>_<%= primaryFields[0].dbName || snakeCase(primaryFields[0].name) %>',
+                <% if (primaryFields[0].dtype === "uuid") { %>
+                  type: 'char',
+                  length: '36',
+                <% } else { %>
+                  type: '<%= primaryFields[0].dtype || "bigint" %>',
+                <% } %>
+                isNullable: true,
+               
+              }),
+            <% } else if (primaryFields && primaryFields.length > 1) { %>
+              <% primaryFields.forEach((field, index) => { %>
+                new TableColumn(  {
+                  <% const name2 = `${field.dbName || snakeCase(field.name)}`;
+                     primaryTablefields.push(`${field.dbName || snakeCase(field.name)}`); 
+                     primaryDBTablefields.push(`${dbTableName}_${name2}`);
+                  %>
+                  name: '<%= dbTableName %>_<%= field.dbName || snakeCase(field.name) %>',
+                  <% if (field.dtype === "uuid") { %>
+                    type: 'char',
+                    length: '36',
+                  <% } else { %>
+                    type: '<%= field.dtype || "bigint" %>',
+                  <% } %> 
+                  isNullable: true<%= index < primaryFields.length - 1 ? ',' : '' %>
+                }),
+              <% }); %>
+            <% } else { %>
+              new TableColumn(  {
+                name: '<%= dbTableName %>_id',
+                type: 'bigint',
+                isNullable: true,
+              }),
+            <% } %>
+          <% } %>
+            
+
+        ]);
+        
+        await queryRunner.createForeignKey('<%=field.relation.target.toLowerCase()%>', new TableForeignKey({
+          columnNames: [
+            <% if(primaryDBTablefields.length === 0 ) {%>
+              '<%= dbTableName+"_id"%>'
+              <% } else { %>
+                <% primaryDBTablefields.forEach((name, index) => { %>'<%= name %>'<%= index < primaryDBTablefields.length - 1 ? ',' : '' %>
+                <% }) %>
+            <% } %>
+          ],
+          referencedTableName: '<%= dbTableName %>',
+          referencedColumnNames: [
+            <% if(primaryDBTablefields.length === 0 ) {%>
+              'id'
+            <% } else { %>
+              <% primaryTablefields.forEach((name, index) => { %>'<%= name %>'<%= index < primaryTablefields.length - 1 ? ',' : '' %>
+              <% }) %>
+            <% } %>
+          ],
+          onUpdate: '<%- field.relation.onUpdate ?? 'CASCADE'%>',
+          onDelete: '<%- field.relation.onDelete ?? 'SET NULL'%>',
+        }));
+        
+      <% } %>
+    <% }) %>
+  }
+
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.dropTable("<%= dbTableName %>");
+  }
+}

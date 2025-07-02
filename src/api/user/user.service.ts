@@ -66,6 +66,7 @@ export class UserService {
    */
   async create(
     createUserBodyReq: UserBodyReqDto<Role>,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     createdByUser: User,
   ): Promise<User> {
     // check if user already exists

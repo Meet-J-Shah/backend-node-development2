@@ -9,4 +9,4 @@ import { CustomLogger } from '../logger/logger.service';
   providers: [JwtTokenService, CustomLogger],
   exports: [JwtTokenService],
 })
-export class JwtTokenModule { }
+export class JwtTokenModule {}

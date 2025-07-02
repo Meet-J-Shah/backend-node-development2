@@ -27,7 +27,7 @@ export default class UserSeeder implements Seeder {
           {
             email: 'admin@boilerplate.com',
             password:
-              '$2b$10$79ElvYGUvP4WT0X6zRrbD.mj.rUaGglYFRFQsGJLePJjv5HAlehOi',
+              '$2a$10$mPmcf8dkBm1UeKy74EbLAuPxzr5Ygsg3E.gI2jUcFJ8KmEDx/ulb.',
             firstName: 'Super',
             lastName: 'Admin',
             publishedAt: '2024-07-12 15:26:33.233574',

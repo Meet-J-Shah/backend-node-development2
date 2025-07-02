@@ -13,4 +13,4 @@ import { CustomLogger } from 'src/utils/logger/logger.service';
   controllers: [AdminPermissionController],
   providers: [PermissionService, CustomLogger],
 })
-export class PermissionModule { }
+export class PermissionModule {}

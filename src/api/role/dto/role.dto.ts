@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import {
   IsNotEmpty,
   MaxLength,
@@ -6,8 +7,11 @@ import {
   IsOptional,
   IsInt,
   IsArray,
+  Matches,
+  IsUUID,
+  ValidateNested,
 } from 'class-validator';
-import { Transform } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class RoleFullBodyReqDto {
@@ -43,12 +47,17 @@ export class FindManyRoleQueryReq {
   limit: number;
 }
 
-export class FindOneRoleParamReqDto {
+export class PrimaryKeysRoleDto {
   @IsString()
   @IsNotEmpty()
-  roleId: string;
+  id: string;
 }
 
+export class MultiplePrimaryKeysRoleDto {
+  @ValidateNested({ each: true })
+  @Type(() => PrimaryKeysRoleDto)
+  items: PrimaryKeysRoleDto[];
+}
 export class CreateRoleBodyReqDto {
   @IsString()
   @IsNotEmpty()
