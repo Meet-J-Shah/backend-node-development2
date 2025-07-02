@@ -32,27 +32,58 @@ import {
 import { AllowOnlyForSubTypes } from '../../../validators/allowSubtypes.validator';
 import { IsValidDefault } from '../../../validators/defaultvalue.validator';
 
-class JoinColumnOptionsDto {
+import {
+  ApiHideProperty,
+  ApiProperty,
+  ApiPropertyOptional,
+} from '@nestjs/swagger';
+
+export class JoinColumnOptionsDto {
+  @ApiPropertyOptional({
+    description:
+      'Name of the join column in this entity (i.e., foreign key column)',
+    example: 'author_id',
+  })
   @IsOptional()
   @IsString()
   name?: string;
 
+  @ApiPropertyOptional({
+    description:
+      'Name of the referenced column in the target entity (usually the primary key)',
+    example: 'id',
+  })
   @IsOptional()
   @IsString()
   referencedColumnName?: string;
 }
 
-class JoinTableOptionsDto {
+export class JoinTableOptionsDto {
+  @ApiPropertyOptional({
+    description:
+      'Name of the join table. If not provided, TypeORM will auto-generate one.',
+    example: 'user_roles',
+  })
   @IsOptional()
   @IsString()
   name?: string;
 
+  @ApiPropertyOptional({
+    description:
+      'Options for the join column referencing the owning side of the relation.',
+    type: () => JoinColumnOptionsDto,
+  })
   @IsOptional()
   @IsObject()
   @ValidateNested()
   @Type(() => JoinColumnOptionsDto)
   joinColumn?: JoinColumnOptionsDto;
 
+  @ApiPropertyOptional({
+    description:
+      'Options for the inverse join column referencing the related entity.',
+    type: () => JoinColumnOptionsDto,
+  })
   @IsOptional()
   @IsObject()
   @ValidateNested()
@@ -60,34 +91,68 @@ class JoinTableOptionsDto {
   inverseJoinColumn?: JoinColumnOptionsDto;
 }
 
-class RelationDto {
+export class RelationDto {
+  @ApiProperty({
+    description: 'Type of the relationship',
+    enum: ['OneToOne', 'OneToMany', 'ManyToOne', 'ManyToMany'],
+    example: 'ManyToOne',
+  })
   @IsString()
   @IsIn(['OneToOne', 'OneToMany', 'ManyToOne', 'ManyToMany'])
   type: 'OneToOne' | 'OneToMany' | 'ManyToOne' | 'ManyToMany';
 
+  @ApiProperty({
+    description: 'Target entity name for the relation (must exist)',
+    example: 'User',
+  })
   @IsString()
   @IsValidEntityTarget({ message: 'Target entity does not exist.' })
   target: string;
 
+  @ApiPropertyOptional({
+    description:
+      'Inverse side property name in the target entity (for bidirectional relation)',
+    example: 'posts',
+  })
   @IsOptional()
   @IsString()
   @IsValidInverseSide({ message: 'Invalid inverseSide for target entity.' })
   inverseSide?: string;
 
+  @ApiPropertyOptional({
+    description: 'Set to true for uni-directional relation',
+    example: false,
+    default: false,
+  })
   @IsOptional()
   @IsBoolean()
   uniDirectional?: boolean = false;
 
+  @ApiPropertyOptional({
+    description:
+      'Indicates if this relation is an array (used for ManyToMany or OneToMany)',
+    example: false,
+    default: false,
+  })
   @IsOptional()
   @IsBoolean()
   isArray?: boolean = false;
 
+  @ApiPropertyOptional({
+    description:
+      'Join column configuration (only for OneToOne, OneToMany, ManyToOne)',
+    type: () => JoinColumnOptionsDto,
+  })
   @ValidateIf((o) => ['OneToOne', 'OneToMany', 'ManyToOne'].includes(o.type))
   @IsOptional()
   @ValidateNested()
   @Type(() => JoinColumnOptionsDto)
   joinColumn?: JoinColumnOptionsDto;
 
+  @ApiPropertyOptional({
+    description: 'Join table configuration (only for ManyToMany)',
+    type: () => JoinTableOptionsDto,
+  })
   @ValidateIf((o) => o.type === 'ManyToMany')
   @IsOptional()
   @ValidateNested()
@@ -95,6 +160,7 @@ class RelationDto {
   joinTable?: JoinTableOptionsDto;
 
   // Explicitly throw error when joinTable is defined for types != ManyToMany
+  @ApiHideProperty()
   @ValidateIf((o) => o.type !== 'ManyToMany' && o.joinTable)
   @IsEmpty({
     message:
@@ -102,24 +168,45 @@ class RelationDto {
   })
   private _invalidJoinTable?: any;
 
+  @ApiPropertyOptional({
+    description: 'Cascade inserts/updates',
+    example: true,
+    default: false,
+  })
   @IsOptional()
   @IsBoolean()
   cascade?: boolean = false;
 
+  @ApiPropertyOptional({
+    description: 'ON DELETE rule for foreign key',
+    enum: ['CASCADE', 'SET NULL', 'RESTRICT', 'NO ACTION'],
+    example: 'SET NULL',
+  })
   @IsOptional()
   @IsString()
   @IsIn(['CASCADE', 'SET NULL', 'RESTRICT', 'NO ACTION'])
   onDelete?: 'CASCADE' | 'SET NULL' | 'RESTRICT' | 'NO ACTION';
 
+  @ApiPropertyOptional({
+    description: 'ON UPDATE rule for foreign key',
+    enum: ['CASCADE', 'SET NULL', 'RESTRICT', 'NO ACTION'],
+    example: 'CASCADE',
+  })
   @IsOptional()
   @IsString()
   @IsIn(['CASCADE', 'SET NULL', 'RESTRICT', 'NO ACTION'])
   onUpdate?: 'CASCADE' | 'SET NULL' | 'RESTRICT' | 'NO ACTION';
 
+  @ApiPropertyOptional({
+    description: 'Is this column nullable?',
+    example: true,
+    default: true,
+  })
   @IsOptional()
   @IsBoolean()
   nullable?: boolean = true;
 }
+
 const allowedSubTypesMap = {
   String: ['varchar', 'char'],
   Text: ['tinytext', 'mediumtext', 'text'],
@@ -136,10 +223,20 @@ const allowedSubTypesMap = {
 };
 export class SubTypeOptionsDto {
   // Needed for conditional validation
+  @ApiPropertyOptional({
+    description: 'The parent data type to which subType belongs',
+    example: 'String',
+    enum: Object.keys(allowedSubTypesMap),
+  })
   @IsOptional()
   @IsString()
   parentType?: string;
 
+  @ApiPropertyOptional({
+    description: 'The specific subType used in the database layer',
+    example: 'varchar',
+    enum: Object.values(allowedSubTypesMap).flat(),
+  })
   @ValidateIf((o) => {
     const allowed = allowedSubTypesMap[o.parentType] ?? [];
     return allowed.length > 0;
@@ -153,19 +250,31 @@ export class SubTypeOptionsDto {
   })
   subType: string;
 
+  @ApiPropertyOptional({
+    description: 'Length for string-based types like varchar or char',
+    example: 255,
+  })
   @ValidateIf((o) => o.parentType === 'String')
-  @IsDefined()
+  @IsOptional()
   @IsInt()
   length?: number;
 
   @AllowOnlyForSubTypes(['char', 'varchar'], ['length'])
   private __stringFieldsOnly__: any;
 
+  @ApiPropertyOptional({
+    description: 'Precision (M) for decimal subType (e.g., decimal(10, 2))',
+    example: 10,
+  })
   @ValidateIf((o) => o.subType === 'decimal')
   @IsOptional()
   @IsInt()
   m?: number;
 
+  @ApiPropertyOptional({
+    description: 'Scale (D) for decimal subType (e.g., decimal(10, 2))',
+    example: 2,
+  })
   @ValidateIf((o) => o.subType === 'decimal')
   @IsOptional()
   @IsInt()
@@ -174,6 +283,10 @@ export class SubTypeOptionsDto {
   @AllowOnlyForSubTypes(['decimal'], ['m', 'd'])
   private __decimalFieldsOnly__: any;
 
+  @ApiPropertyOptional({
+    description: 'Minimum length for password type',
+    example: 6,
+  })
   @ValidateIf((o) => o.subType === 'password')
   @IsOptional()
   @IsInt({ message: 'minLength must be an integer' })
@@ -181,6 +294,10 @@ export class SubTypeOptionsDto {
   @Max(20, { message: 'minLength must not exceed 20 characters' })
   minLength?: number;
 
+  @ApiPropertyOptional({
+    description: 'Maximum length for password type',
+    example: 12,
+  })
   @ValidateIf((o) => o.subType === 'Password')
   @IsOptional()
   @IsInt()
@@ -188,11 +305,21 @@ export class SubTypeOptionsDto {
   @Min(4, { message: 'maxLength must be at least 4 characters' })
   maxLength?: number;
 
+  @ApiPropertyOptional({
+    description: 'Whether password must include numbers',
+    example: true,
+    default: true,
+  })
   @ValidateIf((o) => o.subType === 'password')
   @IsOptional()
   @IsBoolean()
   Numeric?: boolean = true;
 
+  @ApiPropertyOptional({
+    description: 'Whether password must include special characters',
+    example: true,
+    default: true,
+  })
   @ValidateIf((o) => o.subType === 'password')
   @IsOptional()
   @IsBoolean()
@@ -204,6 +331,10 @@ export class SubTypeOptionsDto {
   // )
   // private __passwordFieldsOnly__: any;
 
+  @ApiPropertyOptional({
+    description: 'Allowed values for Enum or Set (simple-array)',
+    example: ['PENDING', 'ACTIVE', 'DISABLED'],
+  })
   @ValidateIf((o) => o.parentType === 'Enum' || o.parentType === 'Set')
   @IsArray()
   @ArrayMaxSize(10)
@@ -215,6 +346,12 @@ export class SubTypeOptionsDto {
 
   @AllowOnlyForSubTypes(['enum', 'simple-array'], ['values'])
   private __valueFieldsOnly__: any;
+
+  @ApiPropertyOptional({
+    description:
+      'Default value depending on subType. Must match allowed type and values.',
+    example: 'ACTIVE',
+  })
 
   // @ValidateIf((o) => ['decimal', 'float', 'double'].includes(o.subType))
   // @Matches(/^-?\d+(\.\d+)?$/, {
@@ -329,14 +466,43 @@ export class SubTypeOptionsDto {
   default?: string | number | boolean | string[] | Date;
 }
 
-class FieldDto {
+export class FieldDto {
+  @ApiProperty({
+    description: 'Field name used in code',
+    example: 'email',
+  })
   @IsString()
   name: string;
 
+  @ApiPropertyOptional({
+    description:
+      'Custom database column name (defaults to name if not provided)',
+    example: 'user_email',
+  })
   @IsString()
   @IsOptional()
   dbName?: string;
 
+  @ApiProperty({
+    description:
+      'High-level type category used to infer database or validation logic',
+    enum: [
+      'String',
+      'Text',
+      'Boolean',
+      'Json',
+      'Enum',
+      'Set',
+      'Uid',
+      'DateTime',
+      'Number',
+      'Relation',
+      'Email',
+      'Password',
+      'PhoneNumber',
+    ],
+    example: 'String',
+  })
   @IsString()
   @IsIn([
     'String',
@@ -370,16 +536,30 @@ class FieldDto {
     | 'Password'
     | 'PhoneNumber';
 
+  @ApiPropertyOptional({
+    description:
+      'Options specific to the subType, required for non-relation fields',
+    type: () => SubTypeOptionsDto,
+  })
   @ValidateIf((o) => o.Type !== 'Relation')
   @ValidateNested()
   @Type(() => SubTypeOptionsDto)
   @IsDefined()
-  subTypeOptions?: SubTypeOptionsDto;
+  subTypeOptions: SubTypeOptionsDto;
 
+  // @ApiPropertyOptional({
+  //   description:
+  //     'Optional override for database column type (for advanced use)',
+  //   example: 'varchar',
+  // })
   @IsOptional()
   @IsString()
   type?: string;
 
+  // @ApiPropertyOptional({
+  //   description: 'Optional override for database dialect-specific type',
+  //   example: 'uuid',
+  // })
   @IsOptional()
   @IsString()
   dtype?: string;
@@ -388,10 +568,20 @@ class FieldDto {
   // @IsInt()
   // length?: number;
 
+  @ApiPropertyOptional({
+    description: 'Indicates if the column can be null',
+    example: false,
+    default: false,
+  })
   @IsOptional()
   @IsBoolean()
   nullable?: boolean;
 
+  @ApiPropertyOptional({
+    description: 'Whether this field should be unique across records',
+    example: true,
+    default: false,
+  })
   @IsOptional()
   @IsBoolean()
   unique?: boolean;
@@ -408,87 +598,179 @@ class FieldDto {
   // @IsString()
   // default?: number | string;
 
+  @ApiPropertyOptional({
+    description: 'Relation definition, required when Type is "Relation"',
+    type: () => RelationDto,
+  })
   @ValidateIf((o) => o.Type === 'Relation')
   @IsDefined({ message: 'relation must be defined when Type is "Relation"' })
   @ValidateNested()
   @Type(() => RelationDto)
   relation?: RelationDto;
 }
-class primaryFieldDto {
+// This DTO is used for defining primary fields in the entity generation process.
+export class primaryFieldDto {
+  @ApiProperty({
+    description: 'The logical name of the primary key field',
+    example: 'id',
+  })
   @IsString()
   name: string;
 
+  @ApiPropertyOptional({
+    description: 'Custom database column name for the primary field (optional)',
+    example: 'user_id',
+  })
   @IsString()
   @IsOptional()
   dbName?: string;
 
+  @ApiPropertyOptional({
+    description:
+      'The general data type (used for runtime or validation decisions)',
+    enum: ['string', 'number'],
+    example: 'string',
+  })
   @IsOptional()
   @IsString()
   @IsIn(['string', 'number'])
   type?: 'string' | 'number';
 
+  @ApiPropertyOptional({
+    description: 'Specific database type for the primary key',
+    enum: ['int', 'bigint', 'uuid'],
+    example: 'uuid',
+  })
   @IsOptional()
   @IsString()
   @IsIn(['int', 'bigint', 'uuid'])
   dtype?: 'int' | 'bigint' | 'uuid';
 }
-class CreationConfigDto {
+
+export class CreationConfigDto {
+  @ApiPropertyOptional({
+    description: 'Whether to include createdAt and updatedAt timestamp columns',
+    example: true,
+    default: false,
+  })
   @IsOptional()
   @IsBoolean()
   withTimestamps?: boolean;
 
+  @ApiPropertyOptional({
+    description: 'Whether to include a soft delete column (deletedAt)',
+    example: true,
+    default: false,
+  })
   @IsOptional()
   @IsBoolean()
   withSoftDelete?: boolean;
 
+  @ApiPropertyOptional({
+    description:
+      'Whether to include createdBy and updatedBy operator tracking columns',
+    example: false,
+    default: false,
+  })
   @IsOptional()
   @IsBoolean()
   operator?: boolean;
 }
 
-class IndicesDto {
+export class IndicesDto {
+  @ApiPropertyOptional({
+    description: 'Optional name of the index (defaults to generated name)',
+    example: 'user_email_index',
+  })
   @IsOptional()
   @IsString()
   name?: string;
 
+  @ApiProperty({
+    description: 'Field names (in DTO) that should be part of the index',
+    type: [String],
+    example: ['email', 'isActive'],
+  })
   @IsDefined({ message: 'indicesFields must be defined' })
   @ArrayMinSize(1)
   @IsArray()
   @IsString({ each: true })
   indicesFields: string[];
 
+  @ApiProperty({
+    description: 'Corresponding field names in the entity that are indexed',
+    type: [String],
+    example: ['email', 'is_active'],
+  })
   @IsDefined({ message: 'indicesFieldsEntity must be defined' })
   @ArrayMinSize(1)
   @IsArray()
   @IsString({ each: true })
   indicesFieldsEntity: string[];
 
+  @ApiPropertyOptional({
+    description: 'Whether this index should enforce uniqueness',
+    example: true,
+    default: false,
+  })
   @IsOptional()
   @IsBoolean()
   unique?: boolean;
 }
 
 export class GenerateDto {
+  @ApiProperty({
+    description: 'Name of the entity/resource being generated',
+    example: 'User',
+  })
   @IsString()
   name: string;
 
+  @ApiProperty({
+    description: 'List of all fields to include in the entity and DTOs',
+    type: [FieldDto],
+  })
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => FieldDto)
   fields: FieldDto[];
 
+  @ApiPropertyOptional({
+    description:
+      'Optional definition of primary field(s), limited to one for now',
+    maxItems: 1,
+    type: [primaryFieldDto],
+    example: [{ name: 'id', type: 'string', dtype: 'uuid' }],
+  })
   @IsArray()
   @IsOptional()
   @ArrayMaxSize(1)
   @ValidateNested({ each: true })
   @Type(() => primaryFieldDto)
-  primaryFields: primaryFieldDto[];
+  primaryFields?: primaryFieldDto[];
 
+  @ApiPropertyOptional({
+    description:
+      'Configuration options such as timestamps, soft deletes, and operators',
+    type: () => CreationConfigDto,
+  })
   @IsOptional()
   @ValidateNested()
   @Type(() => CreationConfigDto)
   creationConfig?: CreationConfigDto;
 
+  @ApiPropertyOptional({
+    description: 'List of custom indices to be created on this entity',
+    type: [IndicesDto],
+    example: [
+      {
+        name: 'user_email_index',
+        indicesFields: ['email'],
+        indicesFieldsEntity: ['email'],
+        unique: true,
+      },
+    ],
+  })
   @IsOptional()
   @IsArray()
   @ArrayMinSize(1)

@@ -421,7 +421,7 @@ import { IsDynamicPassword } from '../../../validators/passwordVail.validator';
 
   }
   
-  <% if(creationConfig.withSoftDelete) {%>
+  <% if(creationConfig?.withSoftDelete) {%>
     export class Delete<%= className %>BodyReqDto {
       @IsBoolean()
       @IsOptional()
@@ -432,6 +432,6 @@ import { IsDynamicPassword } from '../../../validators/passwordVail.validator';
   
   export class UpdateAndDelete<%= className %>BodyReqDto extends IntersectionType(
     Update<%= className %>BodyReqDto,
-    <% if(creationConfig.withSoftDelete) {%>Delete<%= className %>BodyReqDto,<% } %>
+    <% if(creationConfig?.withSoftDelete) {%>Delete<%= className %>BodyReqDto,<% } %>
   ) {}
   

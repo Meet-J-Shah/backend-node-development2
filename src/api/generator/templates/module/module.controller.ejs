@@ -28,7 +28,7 @@ import {
   PrimaryKeys<%= className %>Dto,
   Create<%= className %>BodyReqDto,
   Update<%= className %>BodyReqDto,
-  <% if(creationConfig.withSoftDelete) { %>
+  <% if(creationConfig?.withSoftDelete) { %>
      Delete<%= className %>BodyReqDto,
   <% } %>
 } from './dto/<%= fileName %>.dto';
@@ -70,12 +70,12 @@ export class <%= className %>Controller {
   @HttpCode(HttpStatus.OK)
   @PermissionDecorator(<%= camelName %>PermissionsConstant.ADMIN_<%= constantName %>_CREATE)
   async create(
-    <% if(creationConfig.operator) {%>
+    <% if(creationConfig?.operator) {%>
       @AdminAuthDecorator() adminAuth: any,
     <% } %>
     @Body() bodyReq: Create<%= className %>BodyReqDto,
   ): Promise<ControllerResDto<<%= className %>>> {
-    const result = await this.<%= camelName %>Service.create(bodyReq    <% if(creationConfig.operator) {%>
+    const result = await this.<%= camelName %>Service.create(bodyReq    <% if(creationConfig?.operator) {%>
      , adminAuth,
     <% } %>);
     return this.globalService.setControllerResponse(result, '<%= className %> created successfully.');
@@ -93,13 +93,13 @@ export class <%= className %>Controller {
   @HttpCode(HttpStatus.OK)
   @PermissionDecorator(<%= camelName %>PermissionsConstant.ADMIN_<%= constantName %>_UPDATE)
   async update(
-    <% if(creationConfig.operator) {%>
+    <% if(creationConfig?.operator) {%>
       @AdminAuthDecorator() adminAuth: any,
     <% } %>
     @Query() primaryKeyDto: PrimaryKeys<%= className %>Dto,      
     @Body() bodyReq: Update<%= className %>BodyReqDto,
   ): Promise<ControllerResDto<<%= className %>>> {
-    const result = await this.<%= camelName %>Service.update(bodyReq, primaryKeyDto<% if(creationConfig.operator) {%>
+    const result = await this.<%= camelName %>Service.update(bodyReq, primaryKeyDto<% if(creationConfig?.operator) {%>
       , adminAuth,
      <% } %>);
     return this.globalService.setControllerResponse(result, '<%= className %> updated successfully.');
@@ -113,17 +113,17 @@ export class <%= className %>Controller {
     const isDeleted = await this.<%= camelName %>Service.delete(primaryKeyDto);
     return this.globalService.setControllerResponse({ isDeleted }, '<%= className %> deleted successfully.');
   }
-<% if(creationConfig.withSoftDelete) { %>
+<% if(creationConfig?.withSoftDelete) { %>
   @Delete('deleteOne')
   @HttpCode(HttpStatus.OK)
   @PermissionDecorator(<%= camelName %>PermissionsConstant.ADMIN_<%= constantName %>_SOFT_DELETE)
   async softDelete(
-    <% if(creationConfig.operator) {%>
+    <% if(creationConfig?.operator) {%>
       @AdminAuthDecorator() adminAuth: any,
     <% } %>
     @Query() primaryKeyDto: PrimaryKeys<%= className %>Dto,): Promise<ControllerResDto<{ isDeleted: boolean }>> {
     const bodyReq: Delete<%= className %>BodyReqDto = { hasSoftDeleted: true };
-    const result = await this.<%= camelName %>Service.update(bodyReq, primaryKeyDto<% if(creationConfig.operator) {%>
+    const result = await this.<%= camelName %>Service.update(bodyReq, primaryKeyDto<% if(creationConfig?.operator) {%>
       , adminAuth,
      <% } %>);
     return this.globalService.setControllerResponse({ isDeleted: !!result }, '<%= className %> deleted successfully.');
@@ -133,13 +133,13 @@ export class <%= className %>Controller {
   @HttpCode(HttpStatus.OK)
   @PermissionDecorator(<%= camelName %>PermissionsConstant.ADMIN_<%= constantName %>_ROLLBACK)
   async rollback(
-    <% if(creationConfig.operator) {%>
+    <% if(creationConfig?.operator) {%>
       @AdminAuthDecorator() adminAuth: any,
     <% } %>
     @Query() primaryKeyDto:PrimaryKeys<%= className %>Dto,): Promise<ControllerResDto<<%= className %>>> {
     const bodyReq: Delete<%= className %>BodyReqDto = { hasSoftDeleted: false };
     const result = await this.<%= camelName %>Service.update(bodyReq, primaryKeyDto,
-    <% if(creationConfig.operator) {%>
+    <% if(creationConfig?.operator) {%>
       adminAuth,
      <% } %> 
      true);
