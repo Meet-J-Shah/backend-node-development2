@@ -236,7 +236,7 @@ export class <%= className %>Controller {
       @HttpCode(HttpStatus.OK)
       @PermissionDecorator(<%= camelName %>PermissionsConstant.ADMIN_<%= constantName %>_CREATE)
       @ApiOperation({ summary: 'Modify <%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %> (connect/disconnect IDs)' })
-      // @ApiQuery({ type: PrimaryKeys<%= className %>Dto })
+      //@ApiQuery({ type: PrimaryKeys<%= className %>Dto })
       @ApiBody({
         schema: {
           type: 'object',

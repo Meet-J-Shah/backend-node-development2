@@ -15,6 +15,10 @@ import {
   ApiQuery,
   ApiBearerAuth,
   ApiExtraModels,
+  ApiParam,
+  ApiBody,
+  getSchemaPath,
+  ApiResponse,
 } from '@nestjs/swagger';
 
 import { PermissionDecorator } from '../../decorators/permission.decorator';
