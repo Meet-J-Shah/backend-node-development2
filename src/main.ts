@@ -5,6 +5,10 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 
 import { AppModule } from './app.module';
 import { ApiResponseInterceptor } from './interceptors/apiResponse.interceptor';
+import {
+  ControllerResDto,
+  PaginationResDto,
+} from './utils/global/dto/global.dto';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   // allow specific method and origin for api request
@@ -46,7 +50,9 @@ async function bootstrap() {
       'access-token', // This name is important for @ApiBearerAuth('access-token')
     )
     .build();
-  const document = SwaggerModule.createDocument(app, config);
+  const document = SwaggerModule.createDocument(app, config, {
+    extraModels: [ControllerResDto, PaginationResDto],
+  });
   SwaggerModule.setup('api', app, document);
   // start server
   await app.listen(3000);

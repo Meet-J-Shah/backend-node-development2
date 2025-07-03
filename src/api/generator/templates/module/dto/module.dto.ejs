@@ -25,6 +25,16 @@ import { Transform, Type } from 'class-transformer';
 import { IntersectionType } from '@nestjs/mapped-types';
 import { IsDynamicPassword } from '../../../validators/passwordVail.validator';
 
+<% if (fields.some(field => field.relation)) { %>
+  <% const importedRelations = new Set(); %>
+  <% fields.forEach(field => {
+    if (field.relation && !importedRelations.has(field.relation.target)) {
+      importedRelations.add(field.relation.target);
+  %>
+  import { <%= field.relation.target %>ResponseDto } from '../../<%= field.relation.target.toLowerCase() %>/dto/<%= field.relation.target.toLowerCase() %>.dto';
+  <% } }); %>
+<% } %>
+
   
   export class FindMany<%= className %>QueryReq {
     @IsInt()
@@ -943,4 +953,94 @@ import { IsDynamicPassword } from '../../../validators/passwordVail.validator';
     Update<%= className %>BodyReqDto,
     <% if(creationConfig?.withSoftDelete) {%>Delete<%= className %>BodyReqDto,<% } %>
   ) {}
-  
+
+
+
+export class <%= name %>ResponseDto {
+  <% if (primaryFields && primaryFields.length > 0) { %>
+    <% primaryFields.forEach(field => { %>
+  @ApiProperty({ example: '<%= field.example || 'primary-id' %>' })
+  <%= field.name %>: <%= field.type || 'string' %>;
+    <% }); %>
+  <% } else { %>
+  @ApiProperty({ example: '1' })
+  id: string;
+  <% } %>
+
+  <% fields.forEach(field => {
+      if (field.Type === 'Password' || field.name === 'deletedAt' || field.name === 'deletedBy') return;
+  %>
+    <% if (field.relation) { %>
+      <% if (field.relation.isArray) { %>
+  @ApiProperty({ type: () => [<%= field.relation.target %>ResponseDto], required: false })
+  <%= field.name %>: <%= field.relation.target %>ResponseDto[];
+      <% } else { %>
+  @ApiProperty({ type: () => <%= field.relation.target %>ResponseDto, required: false })
+  <%= field.name %>: <%= field.relation.target %>ResponseDto;
+      <% } %>
+    <% } else { %>
+      <% if (field.dtype === 'enum') { %>
+  @ApiProperty({
+    enum: <%- JSON.stringify(field.enum) %>,
+    example: '<%= field.enum[0] %>',
+  })
+  <%= field.name %>: <%- field.enum.map(v => `'${v}'`).join(' | ') %>;
+      <% } else if (field.dtype === 'simple-array' && field.enum) { %>
+  @ApiProperty({
+    type: [String],
+    enum: <%- JSON.stringify(field.enum) %>,
+    example: [<%- field.enum.slice(0, 2).map(v => `'${v}'`).join(', ') %>],
+  })
+  <%= field.name %>: (<%- field.enum.map(v => `'${v}'`).join(' | ') %>)[];
+      <% } else if (field.dtype === 'decimal') { %>
+  @ApiProperty({
+    type: String,
+    example: '<%= field.default || "12345678.99" %>',
+    description: 'Decimal value<%= field.subTypeOptions?.m ? ` (precision: ${field.subTypeOptions.m}` : "" %><%= field.subTypeOptions?.d ? `, scale: ${field.subTypeOptions.d})` : "" %>',
+  })
+  <%= field.name %>: string;
+      <% } else if (field.dtype === 'json') { %>
+  @ApiProperty({
+    type: 'object',
+    example: { key: 'value' },
+    description: 'JSON data',
+  })
+  <%= field.name %>: Record<string, any>;
+      <% } else if (field.dtype === 'datetime' || field.dtype === 'timestamp') { %>
+  @ApiProperty({ type: String, format: 'date-time', example: '2025-01-01T12:00:00Z' })
+  <%= field.name %>: Date;
+      <% } else if (field.dtype === 'date') { %>
+  @ApiProperty({ type: String, format: 'date', example: '2025-01-01' })
+  <%= field.name %>: string;
+      <% } else if (field.dtype === 'time') { %>
+  @ApiProperty({ type: String, example: '15:30:00' })
+  <%= field.name %>: string;
+      <% } else if (field.dtype === 'boolean') { %>
+  @ApiProperty({ type: Boolean, example: true })
+  <%= field.name %>: boolean;
+      <% } else if (field.dtype === 'int' || field.dtype === 'smallint' || field.dtype === 'bigint') { %>
+  @ApiProperty({ type: Number, example: 123 })
+  <%= field.name %>: number;
+      <% } else { %>
+  @ApiProperty({ type: String, example: '<%= field.default || field.name %>' })
+  <%= field.name %>: string;
+      <% } %>
+    <% } %>
+  <% }); %>
+
+  <% if (creationConfig?.withTimestamps) { %>
+  @ApiProperty({ type: String, format: 'date-time', example: '2024-01-01T12:00:00Z' })
+  createdAt: Date;
+
+  @ApiProperty({ type: String, format: 'date-time', example: '2024-01-02T12:00:00Z' })
+  updatedAt: Date;
+  <% } %>
+
+  <% if (creationConfig?.operator) { %>
+  @ApiProperty({ type: () => UserResponseDto, required: false })
+  createdBy?: UserResponseDto;
+
+  @ApiProperty({ type: () => UserResponseDto, required: false })
+  updatedBy?: UserResponseDto;
+  <% } %>
+}
