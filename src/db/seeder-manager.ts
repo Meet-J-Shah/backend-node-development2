@@ -8,27 +8,27 @@ const run = async () => {
   const seederName = process.argv[3]; // name of the seeder file without extension
 
   if (!direction || !['run', 'down'].includes(direction)) {
-    console.error('❌ Please specify "run" or "down"');
+    console.error(' Please specify "run" or "down"');
     process.exit(1);
   }
 
   if (!seederName) {
-    console.error('❌ Please specify the seeder name (e.g., PizzaSeeder)');
+    console.error(' Please specify the seeder name (e.g., PizzaSeeder)');
     process.exit(1);
   }
 
   try {
     await dataSource.initialize();
-    console.log('✅ Connected to database');
+    console.log(' Connected to database');
 
     const seederPath = path.resolve(__dirname, `./seeders/${seederName}`);
-    console.log(`📦 Loading seeder: ${seederPath}`);
+    console.log(` Loading seeder: ${seederPath}`);
 
     if (
       !fs.existsSync(seederPath + '.ts') &&
       !fs.existsSync(seederPath + '.js')
     ) {
-      console.error(`❌ Seeder file ${seederName} not found.`);
+      console.error(` Seeder file ${seederName} not found.`);
       process.exit(1);
     }
 
@@ -36,7 +36,7 @@ const run = async () => {
     const SeederClass = seederModule.default || seederModule[seederName];
 
     if (!SeederClass || typeof SeederClass.prototype.run !== 'function') {
-      console.error(`❌ Invalid seeder class in ${seederName}`);
+      console.error(` Invalid seeder class in ${seederName}`);
       process.exit(1);
     }
 
@@ -44,21 +44,21 @@ const run = async () => {
 
     if (direction === 'run') {
       await seeder.run(null, dataSource);
-      console.log(`✅ Successfully ran seeder: ${seederName}`);
+      console.log(` Successfully ran seeder: ${seederName}`);
     } else if (direction === 'down') {
       if (typeof seeder.down !== 'function') {
         console.error(
-          `❌ Seeder ${seederName} does not implement a 'down' method.`,
+          ` Seeder ${seederName} does not implement a 'down' method.`,
         );
         process.exit(1);
       }
       await seeder.down(null, dataSource);
-      console.log(`🗑️ Successfully reverted seeder: ${seederName}`);
+      console.log(` Successfully reverted seeder: ${seederName}`);
     }
 
     await dataSource.destroy();
   } catch (err) {
-    console.error(`❌ Error executing ${direction} for ${seederName}:`, err);
+    console.error(` Error executing ${direction} for ${seederName}:`, err);
     process.exit(1);
   }
 };

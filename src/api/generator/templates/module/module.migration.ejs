@@ -136,7 +136,7 @@ export class Create<%= name %>Table<%= timestamp %> implements MigrationInterfac
             type: 'bigint',
             isNullable: true,
           },
-        <% if (creationConfig.withSoftDelete) { %>
+        <% if (creationConfig?.withSoftDelete) { %>
           {
             name: 'deleted_by',
             type: 'bigint',
@@ -166,7 +166,7 @@ export class Create<%= name %>Table<%= timestamp %> implements MigrationInterfac
           onDelete: 'SET NULL',
           onUpdate: 'CASCADE',
         }),
-      <% if (creationConfig.withSoftDelete) { %>
+      <% if (creationConfig?.withSoftDelete) { %>
         <% entityForeignKeyNames.push('deleted_by') %>
         new TableForeignKey({
           columnNames: ['deleted_by'],

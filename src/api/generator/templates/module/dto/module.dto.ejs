@@ -20,6 +20,7 @@ import {
   IsISO8601,
   IsPhoneNumber,
 } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import { IntersectionType } from '@nestjs/mapped-types';
 import { IsDynamicPassword } from '../../../validators/passwordVail.validator';
@@ -28,10 +29,12 @@ import { IsDynamicPassword } from '../../../validators/passwordVail.validator';
   export class FindMany<%= className %>QueryReq {
     @IsInt()
     @Transform(({ value }) => Number.parseInt(value))
+    @ApiProperty({ example: 1, description: 'Page number for pagination' })
     page: number;
   
     @IsInt()
     @Transform(({ value }) => Number.parseInt(value))
+    @ApiProperty({ example: 10, description: 'Number of items per page' })
     limit: number;
   }
   
@@ -41,13 +44,30 @@ import { IsDynamicPassword } from '../../../validators/passwordVail.validator';
       <%  if (primaryFields && primaryFields.length > 1) { %>
         <% primaryFields.forEach(field => { %>
             <% if (field.dtype === 'uuid') { %>
+              @ApiProperty({
+                example: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+                description: 'UUID primary key field',
+                type: 'string',
+                format: 'uuid',
+              })
               @IsUUID()
             <% } else if ( field.dtype === 'int') { %>
                 @Type(() => Number)
                 @IsInt()
+                @ApiProperty({
+                  example: 123,
+                  description: 'Integer primary key',
+                  type: 'integer',
+                  format: 'int32',
+                })
             <% } else { %>
                 @IsString()
                 @Matches(/^\d+$/, { message: 'ID must be a string of digits' })
+                @ApiProperty({
+                  example: '9223372036854775807',
+                  description: 'BigInt primary key field (as string)',
+                  type: 'string',
+                })
             <% } %>
               @IsNotEmpty()
             <%= field.name %>: <%= field.tsType || field.type || 'string' %>;
@@ -57,18 +77,40 @@ import { IsDynamicPassword } from '../../../validators/passwordVail.validator';
         <% if (primaryFields && primaryFields.length === 1) { %>
           <% if (primaryFields[0].dtype === 'uuid') { %>
             @IsUUID()
+            @ApiProperty({
+              example: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+              description: 'UUID primary key field',
+              type: 'string',
+              format: 'uuid',
+            })
           <% } else if (primaryFields[0].dtype === 'int') { %>
             @Type(() => Number)
             @IsInt()
+            @ApiProperty({
+              example: 123,
+              description: 'Integer primary key',
+              type: 'integer',
+              format: 'int32',
+            })
           <% } else { %>
-            @IsString()
+              @IsString()
               @Matches(/^\d+$/, { message: 'ID must be a string of digits' })
+              @ApiProperty({
+                example: '9223372036854775807',
+                description: 'BigInt primary key field (as string)',
+                type: 'string',
+              })
           <% } %>
           @IsNotEmpty()
           <%= primaryFields[0].name %>: <%= primaryFields[0].tsType || primaryFields[0].type || 'string' %>;
           <% } else { %>
             @IsString()
             @Matches(/^\d+$/, { message: 'ID must be a string of digits' })
+            @ApiProperty({
+              example: '9223372036854775807',
+              description: 'BigInt primary key field (as string)',
+              type: 'string',
+            })
             @IsNotEmpty()
             id: string;
           <% } %>
@@ -77,6 +119,10 @@ import { IsDynamicPassword } from '../../../validators/passwordVail.validator';
     export class MultiplePrimaryKeys<%=className %>Dto {
       @ValidateNested({ each: true })
       @Type(() => PrimaryKeys<%= className %>Dto)
+      @ApiProperty({
+        type: [PrimaryKeys<%= className %>Dto],
+        description: 'Array of primary keys for bulk actions',
+      })
       items: PrimaryKeys<%= className %>Dto[];
     }
   export class Create<%= className %>BodyReqDto 
@@ -85,19 +131,34 @@ import { IsDynamicPassword } from '../../../validators/passwordVail.validator';
     <% } %>
   {
     <% fields.forEach(field => { %>
-      <% if (field.apiProperty) { %>
-      @ApiProperty()
-      <% } %>
+
     
       <% if (field.relation) { %>
         <% if (['OneToOne', 'ManyToOne'].includes(field.relation.type)) { %> 
           @IsOptional()
           @IsString()
+          @ApiProperty({
+            example: '9223372036854775807',
+            description: 'BigInt foreign key field (as string)',
+            type: 'string',
+            required: <%= !field.nullable  %>,
+          })
           <%= field.name %>Id?: string;
         <% } else { %>
           @IsOptional()
           @IsArray()
           @IsString({ each: true })
+          @ApiProperty({
+            example: ['9223372036854775807', '9223372036854775806'],
+            description: 'Array of BigInt foreign keys (each as string)',
+            type: 'array',
+            items: {
+              type: 'string',
+              example: '9223372036854775807',
+              description: 'Each item is a BigInt foreign key string',
+            },
+            required: <%= !field.nullable %>,
+          })
           <%= pluralize.singular(field.name) %>Ids?: string[];
         <% } %>
     
@@ -255,19 +316,34 @@ import { IsDynamicPassword } from '../../../validators/passwordVail.validator';
   
   export class Update<%= className %>BodyReqDto {
     <% fields.forEach(field => { %>
-      <% if (field.apiProperty) { %>
-      @ApiProperty()
-      <% } %>
+
     
       <% if (field.relation) { %>
         <% if (['OneToOne', 'ManyToOne'].includes(field.relation.type)) { %> 
           @IsOptional()
           @IsString()
+          @ApiProperty({
+            example: '9223372036854775807',
+            description: 'BigInt foreign key field (as string)',
+            type: 'string',
+            required: false,
+          })
           <%= field.name %>Id?: string;
         <% } else { %>
           @IsOptional()
           @IsArray()
           @IsString({ each: true })
+          @ApiProperty({
+            example: ['9223372036854775807', '9223372036854775806'],
+            description: 'Array of BigInt foreign keys (each as string)',
+            type: 'array',
+            items: {
+              type: 'string',
+              example: '9223372036854775807',
+              description: 'Each item is a BigInt foreign key string',
+            },
+            required: false,
+          })
           <%= pluralize.singular(field.name) %>Ids?: string[];
         <% } %>
     
@@ -421,10 +497,15 @@ import { IsDynamicPassword } from '../../../validators/passwordVail.validator';
 
   }
   
-  <% if(creationConfig.withSoftDelete) {%>
+  <% if(creationConfig?.withSoftDelete) {%>
     export class Delete<%= className %>BodyReqDto {
       @IsBoolean()
       @IsOptional()
+      @ApiProperty({
+        example: true,
+        description: 'True to soft delete the <%= className %>',
+        required: false,
+      })
       hasSoftDeleted?: boolean;
     }
   <% } %>
@@ -432,6 +513,6 @@ import { IsDynamicPassword } from '../../../validators/passwordVail.validator';
   
   export class UpdateAndDelete<%= className %>BodyReqDto extends IntersectionType(
     Update<%= className %>BodyReqDto,
-    <% if(creationConfig.withSoftDelete) {%>Delete<%= className %>BodyReqDto,<% } %>
+    <% if(creationConfig?.withSoftDelete) {%>Delete<%= className %>BodyReqDto,<% } %>
   ) {}
   

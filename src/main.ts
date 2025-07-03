@@ -37,6 +37,14 @@ async function bootstrap() {
     .setTitle('Boilerplate APIs')
     .setVersion('1.0')
     .addTag('Boilerplate')
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT', // Optional
+      },
+      'access-token', // This name is important for @ApiBearerAuth('access-token')
+    )
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);

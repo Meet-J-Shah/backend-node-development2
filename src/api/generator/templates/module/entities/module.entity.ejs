@@ -37,15 +37,17 @@ import { <%= field.relation.target %> } from "../../<%= relationFile %>/entities
 <% }) %>
 
 @Entity()
-<% indices.forEach((Index,index) => { %>
-  @Index( <% if (Index.name) { %>'<%='IDX_'+dbTableName+'_'+index+'_'+ Index.name %>' 
-          <% } else { %>'<%='IDX_'+dbTableName+'_'+index+'_'+ Index.indicesFields.map(camelCase).join('_') %>' 
-          <% }  %>
-          ,<%- JSON.stringify(Index.indicesFieldsEntity) %>
-          <% if (Index.unique) { %>, { unique: true } <% } %>
-        )
-  
-<% }) %>
+<% if(indices && indices.length > 0) { %>
+  <% indices.forEach((Index,index) => { %>
+    @Index( <% if (Index.name) { %>'<%='IDX_'+dbTableName+'_'+index+'_'+ Index.name %>' 
+            <% } else { %>'<%='IDX_'+dbTableName+'_'+index+'_'+ Index.indicesFields.map(camelCase).join('_') %>' 
+            <% }  %>
+            ,<%- JSON.stringify(Index.indicesFieldsEntity) %>
+            <% if (Index.unique) { %>, { unique: true } <% } %>
+          )
+    
+  <% }) %>
+<% } %>
 export class <%= name %> {
   <% const primaryKeys=[]; const primaryDBKeys=[]; const primaryKeyTypes=[]; %>
   <% if (primaryFields) {%>
@@ -274,27 +276,32 @@ export class <%= name %> {
 
   static selectFields = {
     id: true,
-<% fields.forEach(field => { if (!field.relation) { %>    <%= field.name %>: true,
-<% }}) %>
-<% if (creationConfig) { %>
-<% if (creationConfig.withTimestamps) { %>    createdAt: true,
-    updatedAt: true,
-<% } %>
-<% if (creationConfig.operator) { %>    createdBy: true,
-    updatedBy: true,
-<% if (creationConfig.withSoftDelete) { %>    // deletedAt is excluded (excluded by @Exclude())
-<% } } %>
+    <% fields.forEach(field => { if (!field.relation) { %>    <%= field.name %>: true,
+      <% }}) %>
+    <% if (creationConfig) { %>
+        <% if (creationConfig.withTimestamps) { %>        
+            createdAt: true,
+            updatedAt: true,
+        <% } %>
+        <% if (creationConfig.operator) { %>    
+            createdBy: true,
+            updatedBy: true,
+            // deletedAt is excluded (excluded by @Exclude())
+        <% } %>
+    <% } %>
   } as const;
 
-  static relationalFields = {
-<% fields.forEach(field => { if (field.relation) { %>    <%= field.name %>: true,
-<% }}) %>
-<% if (creationConfig.operator) { %>    createdBy: true,
-    updatedBy: true,
-<% if (creationConfig.withSoftDelete) { %>    deletedBy: true,
-<% } } %>
+  static relationalFields = 
+  {
+    <% fields.forEach(field =>{ if (field.relation) { %>    <%= field.name %>: true,
+          <% }}) %>
+    <% if (creationConfig) { %>
+      <% if (creationConfig.operator) { %>  
+        createdBy: true,
+        updatedBy: true,
+    <% if (creationConfig.withSoftDelete) { %>    
+      deletedBy: true,
+    <% } } } %>
   } as const;
-<% } %>
-
 
 }
