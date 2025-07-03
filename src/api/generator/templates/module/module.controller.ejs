@@ -18,6 +18,7 @@ import {
   getSchemaPath,
   ApiBody,
   ApiBearerAuth,
+  ApiExtraModels,
 } from '@nestjs/swagger';
 import { AdminAuthGuard } from '../../guards/adminAuth.guard';
 import { AdminAuthDecorator } from '../../decorators/adminAuth.decorator';
@@ -236,6 +237,7 @@ export class <%= className %>Controller {
       @HttpCode(HttpStatus.OK)
       @PermissionDecorator(<%= camelName %>PermissionsConstant.ADMIN_<%= constantName %>_CREATE)
       @ApiOperation({ summary: 'Modify <%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %> (connect/disconnect IDs)' })
+      @ApiExtraModels(MultiplePrimaryKeys<%=relatedClass %>Dto)
       //@ApiQuery({ type: PrimaryKeys<%= className %>Dto })
       @ApiBody({
         schema: {
