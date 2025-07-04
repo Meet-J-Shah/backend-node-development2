@@ -144,7 +144,7 @@ export class RoleController {
    * ROLE API: update role by role id
    */
 
-  @Put(':roleId')
+  @Put(':id')
   @HttpCode(HttpStatus.OK)
   @PermissionDecorator(rolePermissionsConstant.ADMIN_ROLE_UPDATE)
   @ApiOperation({ summary: 'Update role by ID' })
@@ -173,7 +173,7 @@ export class RoleController {
    * ROLE API: soft delete role by role id
    */
 
-  @Delete(':roleId')
+  @Delete(':id')
   @HttpCode(HttpStatus.OK)
   @PermissionDecorator(rolePermissionsConstant.ADMIN_ROLE_SOFT_DELETE)
   @ApiOperation({ summary: 'Soft delete role by ID' })
@@ -210,7 +210,7 @@ export class RoleController {
    * ROLE API: rollback soft deleted role by role id
    */
 
-  @Put(':roleId/rollback')
+  @Put(':id/rollback')
   @HttpCode(HttpStatus.OK)
   @PermissionDecorator(rolePermissionsConstant.ADMIN_ROLE_ROLLBACK)
   @ApiOperation({ summary: 'Rollback soft deleted role by ID' })
@@ -241,7 +241,7 @@ export class RoleController {
   /**
    * ROLE API: hard delete role by role id
    */
-  @Delete(':roleId/permanent')
+  @Delete(':id/permanent')
   @HttpCode(HttpStatus.OK)
   @PermissionDecorator(rolePermissionsConstant.ADMIN_ROLE_HARD_DELETE)
   @ApiOperation({ summary: 'Hard delete role by ID' })
@@ -269,7 +269,7 @@ export class RoleController {
    * ROLE API: update permission into role by role id
    */
 
-  @Put(':roleId/permissions')
+  @Put(':id/permissions')
   @HttpCode(HttpStatus.OK)
   @PermissionDecorator(rolePermissionsConstant.ADMIN_ROLE_UPDATE_PERMISSION)
   @ApiOperation({ summary: 'Update permissions for role' })
